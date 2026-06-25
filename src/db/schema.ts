@@ -1,4 +1,14 @@
-import { pgTable, uuid, text, timestamp, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  text,
+  timestamp,
+  integer,
+  boolean,
+  jsonb,
+  uniqueIndex,
+  index,
+} from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -24,6 +34,27 @@ export const predictions = pgTable("predictions", {
   amount: text("amount").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const indexerEvents = pgTable(
+  "indexer_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    ledger: integer("ledger").notNull(),
+    txHash: text("tx_hash").notNull(),
+    opIndex: integer("op_index").notNull(),
+    eventType: text("event_type"),
+    payload: jsonb("payload"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    ledgerTxOpUnique: uniqueIndex("indexer_events_ledger_tx_op_idx").on(
+      table.ledger,
+      table.txHash,
+      table.opIndex,
+    ),
+    ledgerIdx: index("indexer_events_ledger_idx").on(table.ledger),
+  }),
+);
 
 export const indexerCursor = pgTable("indexer_cursor", {
   id: integer("id").primaryKey(),

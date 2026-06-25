@@ -24,6 +24,16 @@ npm run db:migrate
 npm run dev
 ```
 
+## Indexer gap scan
+
+The gap-scan worker detects missing ledger ranges in `indexer_events` between the durable cursor and chain tip, emits `indexer_gap_detected_total{from,to}`, and self-heals via `backfillRange`:
+
+```bash
+npm run indexer:gap-scan
+```
+
+Configure via `INDEXER_GAP_SCAN_INTERVAL_MS`, `INDEXER_REWIND_LEDGERS`, and `INDEXER_BACKFILL_CHUNK_SIZE` in `.env`.
+
 ## Layout
 
 ```
@@ -31,6 +41,8 @@ src/
   config/      env + logger
   routes/      health, markets (more to come)
   services/    domain services
+  workers/     indexer gap scan worker
+  metrics/     in-process counters (indexer_gap_detected_total)
   middleware/  errorHandler, auth (planned)
   db/          drizzle schema
 tests/         jest tests
