@@ -5,4 +5,9 @@ module.exports = {
   testMatch: ["**/tests/**/*.test.ts"],
   collectCoverageFrom: ["src/**/*.ts"],
   coverageDirectory: "coverage",
+  coverageThreshold: {
+    global: {
+      statements: 90,
+    },
+  },
 };
