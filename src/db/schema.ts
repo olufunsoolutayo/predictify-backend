@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, uuid, text, timestamp, integer, boolean, jsonb, index } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -30,3 +30,25 @@ export const indexerCursor = pgTable("indexer_cursor", {
   lastLedger: integer("last_ledger").notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Stores idempotency keys for POST/PATCH mutation replay.
+ * Rows are purged after 24 h by the sweeper job.
+ */
+export const idempotencyRecords = pgTable(
+  "idempotency_records",
+  {
+    key: text("key").primaryKey(),
+    /** sha256 hex of the request body at first call */
+    fingerprint: text("fingerprint").notNull(),
+    /** HTTP status code of the original response */
+    responseStatus: integer("response_status").notNull(),
+    /** Serialised response body */
+    responseBody: jsonb("response_body").notNull(),
+    /** Optional headers to replay (e.g. Location) */
+    responseHeaders: jsonb("response_headers").notNull().default({}),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  },
+  (t) => ({ idempotencyExpiresIdx: index("idempotency_expires_idx").on(t.expiresAt) }),
+);
