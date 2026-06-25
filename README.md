@@ -24,6 +24,18 @@ npm run db:migrate
 npm run dev
 ```
 
+`DATABASE_URL` is required in development and production. The markets API reads from
+Postgres with Drizzle and returns active, non-archived rows from the `markets` table.
+
+## Markets API
+
+```http
+GET /api/markets?limit=50&offset=0
+```
+
+`limit` is optional and capped at 100; `offset` defaults to 0. Responses contain
+ISO-8601 `resolutionTime` values.
+
 ## Layout
 
 ```
