@@ -19,9 +19,12 @@ marketsRouter.get("/", async (req, res, next) => {
 marketsRouter.get("/:id", async (req, res, next) => {
   try {
     const market = await getMarketById(req.params.id);
-    if (!market) return res.status(404).json({ error: { code: "not_found" } });
-    return res.json({ data: market });
-  } catch (e) { return next(e); }
+    if (!market) {
+      res.status(404).json({ error: { code: "not_found" } });
+      return;
+    }
+    res.json({ data: market });
+  } catch (e) { next(e); }
 });
 
 marketsRouter.use("/:id/disputes", disputesRouter);
