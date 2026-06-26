@@ -7,6 +7,7 @@ const defaults: Record<string, string> = {
   SOROBAN_RPC_URL: "https://soroban-testnet.stellar.org",
   HORIZON_URL: "https://horizon-testnet.stellar.org",
   PREDICTIFY_CONTRACT_ID: "CTEST_CONTRACT_ID",
+  INDEXER_REWIND_LEDGERS: "100",
 };
 
 for (const [key, value] of Object.entries(defaults)) {

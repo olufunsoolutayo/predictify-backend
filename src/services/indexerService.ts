@@ -1,148 +1,271 @@
-import type { rpc } from "@stellar/stellar-sdk";
-
 /**
- * A normalized contract event ready to be persisted. Decoupled from the raw
- * `@stellar/stellar-sdk` shape so the persistence layer and tests do not depend
- * on XDR types.
+ * Reorg-safe Soroban event indexer.
+ *
+ * Each tick the service re-fetches the last INDEXER_REWIND_LEDGERS ledgers
+ * from Soroban RPC and compares them against persisted events.  Any event
+ * that was stored in a previous tick but is no longer returned by the RPC
+ * indicates a chain reorganisation: the indexer rolls back derived state to
+ * the earliest orphaned ledger, then re-ingests the canonical events.
+ *
+ * Duplicate events (same ledger + txHash + opIndex) are silently dropped via
+ * the unique index on indexer_events — inserts use ON CONFLICT DO NOTHING.
+ *
+ * Dependency injection via IndexerStore / EventFetcher makes the algorithm
+ * unit-testable without a live database or RPC node.
  */
-export interface IndexedEvent {
-  id: string;
+
+import { eq, gte, inArray } from "drizzle-orm";
+import { rpc as SorobanRpc } from "@stellar/stellar-sdk";
+import { logger } from "../config/logger";
+import { indexerCursor, indexerEvents, markets, predictions } from "../db/schema";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type * as schema from "../db/schema";
+
+// ── Public types ──────────────────────────────────────────────────────────────
+
+export interface RawEvent {
+  /** Soroban ledger sequence number */
   ledger: number;
-  contractId: string | null;
-  type: string;
+  /** Full transaction hash */
   txHash: string;
+  /** Event's zero-based position within the transaction */
+  opIndex: number;
+  /** RPC paging cursor (globally unique per event) */
+  id: string;
+  /** Contract Strkey (starts with 'C') */
+  contractId: string;
+  /** XDR-encoded topic segments (base64) */
+  topicXdr: string[];
+  /** XDR-encoded event value (base64) */
+  valueXdr: string;
   ledgerClosedAt: Date;
-  topic: string[];
-  value: string;
+}
+
+/** Minimal projection used for reorg comparison */
+export interface StoredEventRef {
+  ledger: number;
+  txHash: string;
+  opIndex: number;
+  id: string;
+}
+
+// ── Store interface ───────────────────────────────────────────────────────────
+//
+// Implementations: DrizzleIndexerStore (production) and MemoryIndexerStore
+// (tests).  Keeping this boundary thin means the algorithm tests never touch
+// a real database.
+
+export interface IndexerStore {
+  getLastLedger(): Promise<number>;
+  setLastLedger(ledger: number): Promise<void>;
+  /** Returns all stored events with ledger >= fromLedger */
+  getEventsInWindow(fromLedger: number): Promise<StoredEventRef[]>;
+  /** Insert; silently skips if (ledger, txHash, opIndex) already exists */
+  insertEventIgnoreDuplicate(event: RawEvent): Promise<void>;
+  /**
+   * Rolls back all indexer_events and derived rows (markets, predictions)
+   * with ledger / indexedLedger >= fromLedger.  Must be atomic.
+   */
+  deleteFromLedger(fromLedger: number): Promise<void>;
+}
+
+// ── Service ───────────────────────────────────────────────────────────────────
+
+export interface IndexerConfig {
+  contractId: string;
+  startLedger: number;
+  rewindLedgers: number;
+}
+
+export type EventFetcher = (fromLedger: number) => Promise<RawEvent[]>;
+
+export class IndexerService {
+  constructor(
+    private readonly store: IndexerStore,
+    private readonly fetchEvents: EventFetcher,
+    private readonly config: IndexerConfig,
+  ) {}
+
+  async pollOnce(): Promise<void> {
+    const cursor = await this.store.getLastLedger();
+
+    // On the very first run, start from the configured ledger.
+    // On subsequent runs, rewind by rewindLedgers to catch reorgs.
+    const windowStart =
+      cursor > 0
+        ? Math.max(this.config.startLedger, cursor - this.config.rewindLedgers)
+        : this.config.startLedger;
+
+    if (windowStart <= 0) {
+      logger.warn({ event: "indexer_skipped" }, "no start ledger configured; set INDEXER_START_LEDGER");
+      return;
+    }
+
+    const freshEvents = await this.fetchEvents(windowStart);
+
+    if (freshEvents.length === 0) {
+      logger.debug({ event: "indexer_no_events", fromLedger: windowStart }, "no new events in window");
+      return;
+    }
+
+    await this.detectAndHandleReorg(windowStart, freshEvents);
+    await this.ingest(freshEvents);
+
+    const maxLedger = Math.max(...freshEvents.map((e) => e.ledger));
+    if (maxLedger > cursor) {
+      await this.store.setLastLedger(maxLedger);
+      logger.debug({ event: "indexer_cursor_advanced", ledger: maxLedger }, "cursor advanced");
+    }
+  }
+
+  private async detectAndHandleReorg(windowStart: number, freshEvents: RawEvent[]): Promise<void> {
+    const persisted = await this.store.getEventsInWindow(windowStart);
+    if (persisted.length === 0) return;
+
+    const freshKeys = new Set(freshEvents.map(eventKey));
+    const orphaned = persisted.filter((e) => !freshKeys.has(eventKey(e)));
+
+    if (orphaned.length === 0) return;
+
+    const minOrphanedLedger = Math.min(...orphaned.map((e) => e.ledger));
+    const maxFreshLedger = Math.max(...freshEvents.map((e) => e.ledger));
+
+    logger.warn(
+      {
+        event: "indexer_reorg_detected",
+        from: minOrphanedLedger,
+        to: maxFreshLedger,
+        orphanedCount: orphaned.length,
+      },
+      "reorg detected — rolling back derived state",
+    );
+
+    await this.store.deleteFromLedger(minOrphanedLedger);
+  }
+
+  private async ingest(events: RawEvent[]): Promise<void> {
+    for (const event of events) {
+      await this.store.insertEventIgnoreDuplicate(event);
+    }
+    logger.debug({ event: "indexer_ingested", count: events.length }, "events ingested");
+  }
+}
+
+// ── Key helpers ───────────────────────────────────────────────────────────────
+
+/** Composite key used to detect orphaned events during reorg comparison */
+export function eventKey(e: { ledger: number; txHash: string; opIndex: number }): string {
+  return `${e.ledger}:${e.txHash}:${e.opIndex}`;
 }
 
 /**
- * Transactional persistence boundary for the indexer. Implementations MUST
- * insert the events and advance the cursor to `newLedger` atomically — either
- * both are committed or neither is. This is what guarantees the cursor never
- * advances past events that were not persisted.
+ * Soroban event IDs are zero-padded cursor strings in the form
+ * "LLLLLLLLLLL-TTTTTTTTTTT-EEEEEEEEEEE" (ledger-tx-event).
+ * The last segment is the event's zero-based index within the transaction.
  */
-export interface CursorStore {
-  /** Returns the last fully-ingested ledger, or null if the indexer has never run. */
-  loadLedger(): Promise<number | null>;
-  /**
-   * Persist `events` and set the cursor to `newLedger` in a single transaction.
-   * Inserting an event whose id already exists is a no-op (idempotent).
-   */
-  commit(events: IndexedEvent[], newLedger: number): Promise<void>;
+export function parseOpIndex(eventId: string): number {
+  const parts = eventId.split("-");
+  const parsed = parseInt(parts[parts.length - 1], 10);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-/** The slice of `rpc.Server` the indexer actually uses, so it is trivial to mock. */
-export type EventSource = Pick<rpc.Server, "getEvents">;
+// ── Production: Soroban RPC event fetcher ─────────────────────────────────────
 
-export interface PollDeps {
-  rpc: EventSource;
-  store: CursorStore;
-  contractId: string;
-  /** Ledger to begin from on the very first run, when no cursor exists yet. */
-  startLedger: number;
-  /** Upper bound on RPC pages fetched per tick, to bound work and memory. */
-  maxPagesPerTick?: number;
-  /** Page size passed to getEvents. */
-  pageSize?: number;
-  logger?: { info: (obj: object, msg?: string) => void; warn: (obj: object, msg?: string) => void };
-}
+export function createSorobanFetcher(rpcUrl: string, contractId: string): EventFetcher {
+  const server = new SorobanRpc.Server(rpcUrl, { allowHttp: false });
 
-export interface PollResult {
-  /** Ledger the cursor pointed at before this tick. */
-  fromLedger: number;
-  /** Ledger the cursor was advanced to (unchanged if nothing to do). */
-  toLedger: number;
-  /** Number of events persisted this tick. */
-  eventCount: number;
-  /** True when the per-tick page cap was hit and more events likely remain. */
-  truncated: boolean;
-}
+  return async (fromLedger: number): Promise<RawEvent[]> => {
+    // TODO: paginate when event count may exceed the RPC limit (~10 000).
+    const response = await server.getEvents({
+      startLedger: fromLedger,
+      filters: [{ type: "contract", contractIds: [contractId] }],
+      limit: 10_000,
+    });
 
-const DEFAULT_MAX_PAGES = 10;
-const DEFAULT_PAGE_SIZE = 100;
-
-function toIndexedEvent(raw: rpc.Api.EventResponse): IndexedEvent {
-  return {
-    id: raw.id,
-    ledger: raw.ledger,
-    // `contractId` is a Contract instance; normalize to its string form.
-    contractId: raw.contractId ? raw.contractId.toString() : null,
-    type: raw.type,
-    txHash: raw.txHash,
-    ledgerClosedAt: new Date(raw.ledgerClosedAt),
-    topic: raw.topic.map((t) => t.toXDR("base64")),
-    value: raw.value.toXDR("base64"),
+    return response.events.map((e) => ({
+      ledger: e.ledger,
+      txHash: e.txHash,
+      opIndex: parseOpIndex(e.id),
+      id: e.id,
+      contractId: e.contractId?.toString() ?? contractId,
+      topicXdr: e.topic.map((t) => t.toXDR("base64")),
+      valueXdr: e.value.toXDR("base64"),
+      ledgerClosedAt: new Date(e.ledgerClosedAt),
+    }));
   };
 }
 
-/**
- * Perform exactly one indexing tick: read the cursor, drain matching events from
- * the Soroban RPC up to the per-tick page cap, then persist the events and
- * advance the cursor transactionally.
- *
- * Failures (RPC or persistence) propagate to the caller and leave the cursor
- * untouched, so the next tick safely retries the same range.
- */
-export async function pollOnce(deps: PollDeps): Promise<PollResult> {
-  const maxPages = deps.maxPagesPerTick ?? DEFAULT_MAX_PAGES;
-  const pageSize = deps.pageSize ?? DEFAULT_PAGE_SIZE;
+// ── Production: Drizzle-backed IndexerStore ───────────────────────────────────
 
-  const last = await deps.store.loadLedger();
-  // First run starts at startLedger; subsequent runs resume just after the
-  // last fully-ingested ledger.
-  const fromLedger = last === null ? deps.startLedger : last + 1;
+type DB = NodePgDatabase<typeof schema>;
 
-  const filters = [{ type: "contract" as const, contractIds: [deps.contractId] }];
+export function createDrizzleStore(db: DB): IndexerStore {
+  return {
+    async getLastLedger(): Promise<number> {
+      const rows = await db
+        .select({ lastLedger: indexerCursor.lastLedger })
+        .from(indexerCursor)
+        .where(eq(indexerCursor.id, 1))
+        .limit(1);
+      return rows[0]?.lastLedger ?? 0;
+    },
 
-  const events: IndexedEvent[] = [];
-  let cursorToken: string | undefined;
-  let latestLedger = last ?? deps.startLedger;
-  let pages = 0;
-  let truncated = false;
+    async setLastLedger(ledger: number): Promise<void> {
+      await db
+        .insert(indexerCursor)
+        .values({ id: 1, lastLedger: ledger })
+        .onConflictDoUpdate({
+          target: indexerCursor.id,
+          set: { lastLedger: ledger, updatedAt: new Date() },
+        });
+    },
 
-  // Page through getEvents. The first request anchors on `startLedger`; later
-  // pages continue from the previous page's last pagingToken.
-  for (;;) {
-    const request = cursorToken
-      ? { filters, cursor: cursorToken, limit: pageSize }
-      : { startLedger: fromLedger, filters, limit: pageSize };
+    async getEventsInWindow(fromLedger: number): Promise<StoredEventRef[]> {
+      return db
+        .select({
+          ledger: indexerEvents.ledger,
+          txHash: indexerEvents.txHash,
+          opIndex: indexerEvents.opIndex,
+          id: indexerEvents.eventId,
+        })
+        .from(indexerEvents)
+        .where(gte(indexerEvents.ledger, fromLedger));
+    },
 
-    const res = await deps.rpc.getEvents(request);
-    latestLedger = res.latestLedger;
+    async insertEventIgnoreDuplicate(event: RawEvent): Promise<void> {
+      await db
+        .insert(indexerEvents)
+        .values({
+          eventId: event.id,
+          ledger: event.ledger,
+          txHash: event.txHash,
+          opIndex: event.opIndex,
+          contractId: event.contractId,
+          topicXdr: event.topicXdr,
+          valueXdr: event.valueXdr,
+          ledgerClosedAt: event.ledgerClosedAt,
+        })
+        .onConflictDoNothing();
+    },
 
-    for (const raw of res.events) {
-      events.push(toIndexedEvent(raw));
-    }
+    async deleteFromLedger(fromLedger: number): Promise<void> {
+      // Wrapped in a transaction: predictions → markets → events
+      // (predictions FK-reference markets; delete child rows first)
+      await db.transaction(async (tx) => {
+        const orphanedMarkets = await tx
+          .select({ id: markets.id })
+          .from(markets)
+          .where(gte(markets.indexedLedger, fromLedger));
 
-    pages += 1;
+        if (orphanedMarkets.length > 0) {
+          await tx.delete(predictions).where(
+            inArray(predictions.marketId, orphanedMarkets.map((m) => m.id)),
+          );
+        }
 
-    // A short page means we have drained everything available for this range.
-    if (res.events.length < pageSize) {
-      break;
-    }
-    if (pages >= maxPages) {
-      truncated = true;
-      break;
-    }
-    cursorToken = res.events[res.events.length - 1].pagingToken;
-  }
-
-  // When truncated, resume *at* the last persisted event's ledger (not past it):
-  // that ledger may hold further events beyond the page cap, so we re-scan it
-  // next tick — the unique event id makes the overlapping re-fetch idempotent.
-  // Otherwise we have drained everything up to latestLedger. `fromLedger - 1`
-  // is the previous cursor, so the value can never move backwards.
-  const newLedger = truncated
-    ? Math.max(fromLedger - 1, events[events.length - 1].ledger - 1)
-    : Math.max(latestLedger, fromLedger - 1);
-
-  await deps.store.commit(events, newLedger);
-
-  deps.logger?.info(
-    { fromLedger, toLedger: newLedger, eventCount: events.length, truncated },
-    "indexer tick complete",
-  );
-
-  return { fromLedger, toLedger: newLedger, eventCount: events.length, truncated };
+        await tx.delete(markets).where(gte(markets.indexedLedger, fromLedger));
+        await tx.delete(indexerEvents).where(gte(indexerEvents.ledger, fromLedger));
+      });
+    },
+  };
 }

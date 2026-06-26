@@ -24,6 +24,8 @@ export const envSchema = z.object({
   // ── Indexer tunables ──────────────────────────────────────
   INDEXER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
   INDEXER_START_LEDGER: z.coerce.number().int().nonnegative().default(0),
+  // How many ledgers behind the cursor to re-fetch each tick (reorg protection)
+  INDEXER_REWIND_LEDGERS: z.coerce.number().int().positive().default(100),
 });
 
 export type Env = z.infer<typeof envSchema>;
