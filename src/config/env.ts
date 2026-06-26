@@ -1,6 +1,9 @@
 import { z } from "zod";
+import pino from "pino";
 
-const schema = z.object({
+const _logger = pino({ level: "warn", base: { service: "predictify-backend" } });
+
+const _schema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3001),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
@@ -9,6 +12,7 @@ const schema = z.object({
   JWT_ISSUER: z.string().default("predictify"),
   JWT_AUDIENCE: z.string().default("predictify-app"),
   JWT_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+  WORKER_HEARTBEAT_SECONDS: z.coerce.number().int().positive().default(30),
   STELLAR_NETWORK: z.enum(["testnet", "mainnet"]).default("testnet"),
   SOROBAN_RPC_URL: z.string().url(),
   HORIZON_URL: z.string().url(),
@@ -17,5 +21,22 @@ const schema = z.object({
   INDEXER_START_LEDGER: z.coerce.number().int().nonnegative().default(0),
 });
 
+export const schema = _schema.refine(
+  (data) => data.JWT_TTL_SECONDS >= data.WORKER_HEARTBEAT_SECONDS * 2,
+  (data) => ({
+    message: `JWT_TTL_SECONDS (${data.JWT_TTL_SECONDS}) must be at least WORKER_HEARTBEAT_SECONDS * 2 (${data.WORKER_HEARTBEAT_SECONDS * 2})`,
+    path: ["JWT_TTL_SECONDS"],
+  })
+);
+
 export const env = schema.parse(process.env);
-export type Env = z.infer<typeof schema>;
+
+const _minTtl = env.WORKER_HEARTBEAT_SECONDS * 2;
+if (env.JWT_TTL_SECONDS < _minTtl * 1.1) {
+  _logger.warn(
+    { JWT_TTL_SECONDS: env.JWT_TTL_SECONDS, minimumRecommended: _minTtl },
+    `JWT_TTL_SECONDS is within 10% of the minimum bound (${_minTtl}). Increase it to avoid worker token-expiry issues.`
+  );
+}
+
+export type Env = z.infer<typeof _schema>;
