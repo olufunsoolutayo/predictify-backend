@@ -13,9 +13,7 @@ const paginationQuerySchema = z.object({
 marketsRouter.get("/", async (req, res, next) => {
   try {
     return res.json({ data: await listMarkets() });
-  } catch (e) {
-    return next(e);
-  }
+  } catch (e) { return next(e); }
 });
 
 marketsRouter.get("/:id", async (req, res, next) => {
@@ -23,7 +21,5 @@ marketsRouter.get("/:id", async (req, res, next) => {
     const market = await getMarketById(req.params.id);
     if (!market) return res.status(404).json({ error: { code: "not_found" } });
     return res.json({ data: market });
-  } catch (e) {
-    return next(e);
-  }
+  } catch (e) { return next(e); }
 });

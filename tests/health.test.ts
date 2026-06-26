@@ -1,8 +1,8 @@
 process.env.DATABASE_URL = "postgres://test:test@localhost:5432/test";
-process.env.JWT_SECRET = "a".repeat(32);
-process.env.SOROBAN_RPC_URL = "https://rpc.testnet.stellar.org";
-process.env.HORIZON_URL = "https://horizon.testnet.stellar.org";
-process.env.PREDICTIFY_CONTRACT_ID = "CABC...";
+process.env.JWT_SECRET = "abcdefghijklmnopqrstuvwxyz123456789012";
+process.env.SOROBAN_RPC_URL = "https://testnet.stellar.org";
+process.env.HORIZON_URL = "https://horizon-testnet.stellar.org";
+process.env.PREDICTIFY_CONTRACT_ID = "test-contract-id";
 
 import request from "supertest";
 import { createApp } from "../src/index";

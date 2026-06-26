@@ -8,8 +8,8 @@ import { healthRouter } from "./routes/health";
 import { marketsRouter } from "./routes/markets";
 import { adminUsersRouter } from "./routes/adminUsers";
 import { errorHandler } from "./middleware/errorHandler";
-import { idempotency } from "./middleware/idempotency";
-import { startIdempotencySweeper } from "./jobs/idempotencySweeper";
+import { metricsMiddleware } from "./metrics/httpMetrics";
+import { register } from "./metrics/registry";
 
 export interface AppDeps {
   /**
@@ -41,48 +41,8 @@ export function createApp(deps: AppDeps = {}): express.Express {
 
   app.use(helmet());
   app.use(express.json({ limit: "256kb" }));
-
-  // ── pinoHttp ─────────────────────────────────────────────────────────────
-  //
-  // genReqId  - Honour an inbound X-Request-Id (sanitised); generate a UUID v4
-  //             when absent or when the inbound value is empty after sanitising.
-  //
-  // customProps - Lift req.id to the top level of every log line as `reqId` so
-  //               it can be queried without drilling into the nested req object.
-  app.use(
-    pinoHttp({
-      logger,
-      genReqId(req) {
-        const inbound = req.headers[REQUEST_ID_HEADER];
-        const raw = Array.isArray(inbound) ? inbound[0] : inbound;
-        return (raw && sanitizeRequestId(raw)) ?? uuidv4();
-      },
-      customProps(req) {
-        return { reqId: req.id };
-      },
-    }),
-  );
-
-  // ── AsyncLocalStorage + response-header middleware ────────────────────────
-  //
-  // Runs after pinoHttp so that req.id is already set.
-  //
-  // 1. Echoes the (possibly sanitised / generated) id back to the caller via
-  //    the X-Request-Id response header, making correlation trivial for clients.
-  //
-  // 2. Wraps the remaining middleware chain inside an AsyncLocalStorage context
-  //    so that any code further downstream — including async workers started
-  //    from a request handler — can call getRequestId() without needing the
-  //    id passed through every function argument.
-  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const requestId = req.id as string;
-
-    // Echo back to client.
-    res.setHeader(REQUEST_ID_HEADER, requestId);
-
-    // Make available to all downstream code via AsyncLocalStorage.
-    requestContextStorage.run({ requestId }, next);
-  });
+  app.use(pinoHttp({ logger }));
+  app.use(metricsMiddleware);
 
   app.use("/health", healthRouter);
 
@@ -97,6 +57,16 @@ export function createApp(deps: AppDeps = {}): express.Express {
 
   app.use("/api/markets", marketsRouter);
   app.use("/api/admin/users", adminUsersRouter);
+
+  app.get("/metrics", async (_req, res) => {
+    const metricsAuthToken = process.env.METRICS_AUTH_TOKEN;
+    if (metricsAuthToken && _req.headers.authorization !== `Bearer ${metricsAuthToken}`) {
+      res.status(401).send("Unauthorized");
+      return;
+    }
+    res.set("Content-Type", register.contentType);
+    res.send(await register.metrics());
+  });
 
   app.use(errorHandler);
   return app;
