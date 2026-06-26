@@ -1,13 +1,21 @@
 import { Router } from "express";
+import { optionalAuth } from "../middleware/requireAuth";
 import { listMarkets, getMarketById } from "../services/marketService";
 import { AppError } from "../errors";
 
 export const marketsRouter = Router();
 
-marketsRouter.get("/", async (_req, res, next) => {
+/**
+ * GET /api/markets
+ * Public listing — personalised when a valid JWT is supplied.
+ * optionalAuth populates req.user when a token is present; 401s on a bad token
+ * so the client knows to re-authenticate rather than silently losing context.
+ */
+marketsRouter.get("/", optionalAuth, async (req, res, next) => {
   try {
-    return res.json({ data: await listMarkets() });
-  } catch (e) { return next(e); }
+    // req.user is defined only when the caller sent a valid JWT.
+    res.json({ data: await listMarkets(), authenticatedAs: req.user ?? null });
+  } catch (e) { next(e); }
 });
 
 marketsRouter.get("/:id", async (req, res, next) => {

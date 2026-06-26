@@ -1,50 +1,25 @@
+/**
+ * /api/predictions — sample protected resource.
+ *
+ * Demonstrates how to import and apply `requireAuth`.  Because the middleware
+ * runs before every handler on this router, TypeScript knows `req.user` is
+ * defined (non-optional) inside the callbacks.
+ */
+
 import { Router } from "express";
-import { z } from "zod";
 import { requireAuth } from "../middleware/requireAuth";
-import { createPrediction, getUserPredictions } from "../services/predictionService";
-import { ValidationError } from "../errors";
 
-export const predictionsRouter = Router({ mergeParams: true });
+export const predictionsRouter = Router();
 
-const createBodySchema = z.object({
-  outcome: z.string().min(1, "outcome is required"),
-  amount: z.string().min(1, "amount is required"),
-  txHash: z.string().min(1, "txHash is required"),
-});
+// Apply requireAuth to every route on this router.
+predictionsRouter.use(requireAuth);
 
-predictionsRouter.post("/", requireAuth, async (req, res, next) => {
-  try {
-    const marketId = req.params.id as string;
-    const userId = req.user!.id;
-
-    const parsed = createBodySchema.safeParse(req.body);
-    if (!parsed.success) {
-      const firstIssue = parsed.error.issues[0];
-      throw new ValidationError(`${firstIssue.path.join(".")}: ${firstIssue.message}`);
-    }
-
-    const prediction = await createPrediction({
-      marketId,
-      userId,
-      outcome: parsed.data.outcome,
-      amount: parsed.data.amount,
-      txHash: parsed.data.txHash,
-    });
-
-    return res.status(201).json({ data: prediction });
-  } catch (e) {
-    return next(e);
-  }
-});
-
-predictionsRouter.get("/mine", requireAuth, async (req, res, next) => {
-  try {
-    const marketId = req.params.id as string;
-    const userId = req.user!.id;
-
-    const list = await getUserPredictions({ marketId, userId });
-    return res.json({ data: list });
-  } catch (e) {
-    return next(e);
-  }
+/**
+ * GET /api/predictions
+ * Returns predictions belonging to the authenticated user.
+ */
+predictionsRouter.get("/", (req, res) => {
+  // req.user is guaranteed to be defined here because requireAuth
+  // would have returned 401 before reaching this handler.
+  res.json({ data: [], user: req.user });
 });

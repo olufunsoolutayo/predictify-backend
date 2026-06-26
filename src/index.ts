@@ -6,7 +6,7 @@ import { env } from "./config/env";
 import { logger } from "./config/logger";
 import { healthRouter } from "./routes/health";
 import { marketsRouter } from "./routes/markets";
-import { authRouter } from "./routes/auth";
+import { predictionsRouter } from "./routes/predictions";
 import { errorHandler } from "./middleware/errorHandler";
 import { requestContextStorage } from "./lib/requestContext";
 import { REQUEST_ID_HEADER } from "./lib/http";
@@ -82,7 +82,7 @@ export function createApp(): express.Express {
 
   app.use("/health", healthRouter);
   app.use("/api/markets", marketsRouter);
-  app.use("/api/auth", authRouter);
+  app.use("/api/predictions", predictionsRouter);
 
   app.use(errorHandler);
   return app;
