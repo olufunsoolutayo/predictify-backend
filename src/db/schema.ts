@@ -143,3 +143,36 @@ export const idempotencyRecords = pgTable(
   },
   (t) => ({ idempotencyExpiresIdx: index("idempotency_expires_idx").on(t.expiresAt) }),
 );
+
+
+
+/**
+ * Stores audit log entries for all significant backend actions.
+ * Includes optional rate-limit context when the entry was triggered
+ * by or during a rate-limited request.
+ */
+export const auditLogs = pgTable(
+  "audit_logs",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    /** The action that was performed e.g. "auth.login", "market.create" */
+    action: text("action").notNull(),
+    /** Stellar wallet address of the actor, if authenticated */
+    walletAddress: text("wallet_address"),
+    /** IP address of the request origin */
+    ip: text("ip").notNull(),
+    /** Correlation ID for tracing across logs */
+    correlationId: text("correlation_id").notNull(),
+    /**
+     * Rate-limit context captured at request time.
+     * Shape: { limit: number, remaining: number, resetAt: string, blocked: boolean }
+     */
+    rateLimitContext: jsonb("rate_limit_context"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => ({
+    auditLogsCorrelationIdx: index("audit_logs_correlation_idx").on(t.correlationId),
+    auditLogsCreatedAtIdx: index("audit_logs_created_at_idx").on(t.createdAt),
+  }),
+);
+

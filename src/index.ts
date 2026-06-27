@@ -9,6 +9,7 @@ import { usersRouter } from "./routes/users";
 import { createDocsRouter } from "./routes/docs";
 import { errorHandler } from "./middleware/errorHandler";
 import { connectWithRetry, closeDb } from "./db/client";
+import { defaultRateLimiter } from "./middleware/rateLimit";
 
 export function createApp(): express.Express {
   const app = express();
@@ -28,12 +29,15 @@ export function createApp(): express.Express {
 
   // Idempotency guard for all state-mutating routes under /api.
   // Must be mounted before the routers it protects.
+
+  app.use("/api", defaultRateLimiter);
   const mutationMethods = ["POST", "PATCH"] as const;
   app.use("/api", (req, res, next) =>
     mutationMethods.includes(req.method as (typeof mutationMethods)[number])
       ? idempotency(req, res, next)
       : next(),
   );
+
 
   app.use("/api/auth", authRouter);
   app.use("/api/markets", marketsRouter);
