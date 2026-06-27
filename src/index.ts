@@ -1,17 +1,39 @@
 import express from "express";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
+import { v4 as uuidv4 } from "uuid";
 import { env } from "./config/env";
 import { logger } from "./config/logger";
 import { healthRouter } from "./routes/health";
 import { marketsRouter } from "./routes/markets";
 import { usersRouter } from "./routes/users";
+import { authRouter } from "./routes/auth";
+import { leaderboardRouter } from "./routes/leaderboard";
 import { createDocsRouter } from "./routes/docs";
+import { metricsMiddleware } from "./metrics/httpMetrics";
+import { idempotency } from "./middleware/idempotency";
 import { errorHandler } from "./middleware/errorHandler";
+import { requestContextStorage } from "./lib/requestContext";
+import { REQUEST_ID_HEADER } from "./lib/http";
+import { register } from "./metrics/registry";
 import { connectWithRetry, closeDb } from "./db/client";
+import { stopScheduler } from "./services/scheduler";
+
+const REQUEST_ID_MAX_LENGTH = 64;
+
+function sanitizeRequestId(raw: string): string | undefined {
+  const sanitised = raw
+    .slice(0, REQUEST_ID_MAX_LENGTH)
+    .replace(/[^A-Za-z0-9\-_.]/g, "");
+  return sanitised.length > 0 ? sanitised : undefined;
+}
 
 export function createApp(): express.Express {
   const app = express();
+
+  if (env.TRUST_PROXY) {
+    app.set("trust proxy", true);
+  }
 
   // ── Swagger UI docs (scoped relaxed CSP) ──────────────────────────────
   // Must be mounted BEFORE the global helmet() so /docs receives its own
@@ -21,13 +43,31 @@ export function createApp(): express.Express {
   // ── Global strict CSP (everything except /docs) ───────────────────────
   app.use(helmet());
   app.use(express.json({ limit: "256kb" }));
-  app.use(pinoHttp({ logger }));
+
+  app.use(
+    pinoHttp({
+      logger,
+      genReqId(req) {
+        const inbound = req.headers[REQUEST_ID_HEADER];
+        const raw = Array.isArray(inbound) ? inbound[0] : inbound;
+        return (raw && sanitizeRequestId(raw)) ?? uuidv4();
+      },
+      customProps(req) {
+        return { reqId: req.id };
+      },
+    }),
+  );
+
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const requestId = req.id as string;
+    res.setHeader(REQUEST_ID_HEADER, requestId);
+    requestContextStorage.run({ requestId }, next);
+  });
+
   app.use(metricsMiddleware);
 
   app.use("/health", healthRouter);
 
-  // Idempotency guard for all state-mutating routes under /api.
-  // Must be mounted before the routers it protects.
   const mutationMethods = ["POST", "PATCH"] as const;
   app.use("/api", (req, res, next) =>
     mutationMethods.includes(req.method as (typeof mutationMethods)[number])
@@ -37,7 +77,18 @@ export function createApp(): express.Express {
 
   app.use("/api/auth", authRouter);
   app.use("/api/markets", marketsRouter);
+  app.use("/api/leaderboard", leaderboardRouter);
   app.use("/api/users", usersRouter);
+
+  app.get("/metrics", async (req, res) => {
+    const metricsAuthToken = process.env.METRICS_AUTH_TOKEN;
+    if (metricsAuthToken && req.headers.authorization !== `Bearer ${metricsAuthToken}`) {
+      res.status(401).send("Unauthorized");
+      return;
+    }
+    res.set("Content-Type", register.contentType);
+    res.send(await register.metrics());
+  });
 
   app.use(errorHandler);
   return app;
@@ -64,18 +115,12 @@ if (require.main === module) {
       process.exit(1);
     }, 5000).unref();
 
+    stopScheduler();
     await closeDb();
     clearTimeout(forceExit);
     process.exit(0);
   });
-  
-  // Graceful shutdown
-  process.on("SIGTERM", () => {
-    logger.info("SIGTERM received, shutting down gracefully");
-    stopScheduler();
-    process.exit(0);
-  });
-  
+
   process.on("SIGINT", () => {
     logger.info("SIGINT received, shutting down gracefully");
     stopScheduler();

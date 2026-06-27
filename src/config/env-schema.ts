@@ -25,6 +25,11 @@ export const envSchema = z.object({
   INDEXER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
   INDEXER_START_LEDGER: z.coerce.number().int().nonnegative().default(0),
   INDEXER_REWIND_LEDGERS: z.coerce.number().int().positive().default(100),
+
+  // ── Anonymous rate limiting ───────────────────────────────
+  ANON_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  ANON_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
+  TRUST_PROXY: z.coerce.boolean().default(false),
 });
 
 export type Env = z.infer<typeof envSchema>;

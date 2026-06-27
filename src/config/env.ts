@@ -18,6 +18,11 @@ const schema = z.object({
   RECONCILIATION_ENABLED: z.coerce.boolean().default(false),
   RECONCILIATION_SCHEDULE: z.string().default("0 2 * * *"),
   ADMIN_ALLOWLIST: z.string().default("").transform((val) => val.split(",").map((s) => s.trim()).filter(Boolean)),
+  PG_POOL_MAX: z.coerce.number().int().positive().default(10),
+  PG_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+  ANON_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  ANON_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
+  TRUST_PROXY: z.coerce.boolean().default(false),
 });
 
 export const env = schema.parse(process.env);
