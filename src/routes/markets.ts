@@ -1,9 +1,13 @@
 import { Router } from "express";
 import { listMarkets, getMarketById, updateMarket, VersionConflictError } from "../services/marketService";
 import { requireAdmin, AuthenticatedRequest } from "../middleware/auth";
+import { rateLimitAnon } from "../middleware/rateLimitAnon";
 import { z } from "zod";
 
 export const marketsRouter = Router();
+
+// Throttle anonymous read traffic; authenticated Bearer callers bypass.
+marketsRouter.use(rateLimitAnon);
 
 const patchMarketSchema = z.object({
   question: z.string().optional(),
