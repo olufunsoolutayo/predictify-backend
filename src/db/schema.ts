@@ -92,6 +92,8 @@ export const markets = pgTable("markets", {
   indexedLedger: integer("indexed_ledger").notNull(),
   archived: boolean("archived").notNull().default(false),
   version: integer("version").notNull().default(1),
+  /** Set to true when an admin force-finalizes a market that is past its resolution deadline. */
+  forceFinalized: boolean("force_finalized").notNull().default(false),
 });
 
 export const marketAuditLog = pgTable("market_audit_log", {

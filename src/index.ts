@@ -7,6 +7,7 @@ import { healthRouter } from "./routes/health";
 import { marketsRouter } from "./routes/markets";
 import { usersRouter } from "./routes/users";
 import { createDocsRouter } from "./routes/docs";
+import { adminMarketsRouter } from "./routes/adminMarkets";
 import { errorHandler } from "./middleware/errorHandler";
 import { connectWithRetry, closeDb } from "./db/client";
 
@@ -38,6 +39,7 @@ export function createApp(): express.Express {
   app.use("/api/auth", authRouter);
   app.use("/api/markets", marketsRouter);
   app.use("/api/users", usersRouter);
+  app.use("/api/admin/markets", adminMarketsRouter);
 
   app.use(errorHandler);
   return app;
