@@ -8,6 +8,7 @@ import { marketsRouter } from "./routes/markets";
 import { usersRouter } from "./routes/users";
 import { createDocsRouter } from "./routes/docs";
 import { errorHandler } from "./middleware/errorHandler";
+import { geoBlock } from "./middleware/geoBlock";
 import { connectWithRetry, closeDb } from "./db/client";
 
 export function createApp(): express.Express {
@@ -23,6 +24,9 @@ export function createApp(): express.Express {
   app.use(express.json({ limit: "256kb" }));
   app.use(pinoHttp({ logger }));
   app.use(metricsMiddleware);
+
+  // ── Geo-blocking (early, before routes) ───────────────────────────────
+  app.use(geoBlock);
 
   app.use("/health", healthRouter);
 

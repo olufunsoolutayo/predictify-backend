@@ -25,6 +25,14 @@ export const envSchema = z.object({
   INDEXER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
   INDEXER_START_LEDGER: z.coerce.number().int().nonnegative().default(0),
   INDEXER_REWIND_LEDGERS: z.coerce.number().int().positive().default(100),
+
+  // ── Geo-blocking ──────────────────────────────────────────
+  // Comma-separated ISO 3166-1 alpha-2 country codes to block (e.g. "RU,KP")
+  GEO_BLOCKED_COUNTRIES: z.string().default("").transform((val) =>
+    val.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean),
+  ),
+  // Absolute path to a MaxMind GeoLite2-Country.mmdb file
+  MMDB_PATH: z.string().default(""),
 });
 
 export type Env = z.infer<typeof envSchema>;

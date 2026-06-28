@@ -18,6 +18,17 @@ const schema = z.object({
   RECONCILIATION_ENABLED: z.coerce.boolean().default(false),
   RECONCILIATION_SCHEDULE: z.string().default("0 2 * * *"),
   ADMIN_ALLOWLIST: z.string().default("").transform((val) => val.split(",").map((s) => s.trim()).filter(Boolean)),
+  // ── Geo-blocking ──────────────────────────────────────────
+  // Comma-separated ISO 3166-1 alpha-2 country codes to block (e.g. "RU,KP")
+  GEO_BLOCKED_COUNTRIES: z.string().default("").transform((val) =>
+    val.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean),
+  ),
+  // Absolute path to a MaxMind GeoLite2-Country.mmdb file
+  MMDB_PATH: z.string().default(""),
+  // Comma-separated IP addresses that always bypass geo-blocking
+  GEO_ALLOWLIST: z.string().default("").transform((val) =>
+    val.split(",").map((s) => s.trim()).filter(Boolean),
+  ),
 });
 
 export const env = schema.parse(process.env);
