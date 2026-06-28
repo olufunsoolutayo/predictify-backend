@@ -13,6 +13,7 @@ import { usersRouter } from "./routes/users";
 import { leaderboardRouter } from "./routes/leaderboard";
 import { createDocsRouter } from "./routes/docs";
 import { errorHandler } from "./middleware/errorHandler";
+import { captchaGate } from "./middleware/captcha";
 import { requestContextStorage } from "./lib/requestContext";
 import { REQUEST_ID_HEADER } from "./lib/http";
 import { register } from "./metrics/registry";
@@ -79,8 +80,8 @@ export function createApp(): express.Express {
   );
 
   app.use("/api/auth", authRouter);
-  app.use("/api/markets", marketsRouter);
-  app.use("/api/leaderboard", leaderboardRouter);
+  app.use("/api/markets", captchaGate, marketsRouter);
+  app.use("/api/leaderboard", captchaGate, leaderboardRouter);
   app.use("/api/users", usersRouter);
   app.use("/api/admin/audit", adminAuditRouter);
 
@@ -108,11 +109,10 @@ if (require.main === module) {
   connectWithRetry()
     .then(() => {
       app.listen(env.PORT, () => {
-        logger.info(
-          { port: env.PORT, env: env.NODE_ENV },
-          "predictify-backend listening",
-        );
-        logger.info({ port: env.PORT }, "Swagger UI available at /docs");
+        logger.info({ port: env.PORT, env: env.NODE_ENV }, "predictify-backend listening");
+        if (env.NODE_ENV !== "production") {
+          logger.info(`Swagger UI available at http://localhost:${env.PORT}/docs`);
+        }
       });
     })
     .catch((err) => {

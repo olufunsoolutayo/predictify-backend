@@ -30,6 +30,12 @@ export const envSchema = z.object({
   ANON_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   ANON_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
   TRUST_PROXY: z.coerce.boolean().default(false),
+
+  // ── Captcha gate (per-IP, unauthenticated endpoints) ─────
+  /** Number of requests per IP per window before captcha is required (0 = disabled) */
+  CAPTCHA_THRESHOLD: z.coerce.number().int().nonnegative().default(10),
+  /** Sliding window length for captcha threshold tracking (ms) */
+  CAPTCHA_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

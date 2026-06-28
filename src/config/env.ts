@@ -24,6 +24,9 @@ const schema = z.object({
   ANON_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
   ANON_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
   TRUST_PROXY: z.coerce.boolean().default(false),
+  // ── Captcha gate ──────────────────────────────────────────
+  CAPTCHA_THRESHOLD: z.coerce.number().int().nonnegative().default(10),
+  CAPTCHA_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
 });
 
 export const env = schema.parse(process.env);
