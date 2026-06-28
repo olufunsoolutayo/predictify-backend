@@ -3,12 +3,16 @@ import { listMarkets, getMarketById, updateMarket, VersionConflictError } from "
 import { searchMarkets } from "../repositories/marketRepository";
 import { requireAdmin, AuthenticatedRequest } from "../middleware/auth";
 import { rateLimitAnon } from "../middleware/rateLimitAnon";
+import { marketAuditRouter } from "./marketAudit";
 import { z } from "zod";
 import { logger } from "../config/logger";
 
 export const marketsRouter = Router();
 
 marketsRouter.use(rateLimitAnon);
+
+// Per-market audit log: GET /api/markets/:id/audit (#216)
+marketsRouter.use("/:id/audit", marketAuditRouter);
 
 const patchMarketSchema = z.object({
   question: z.string().optional(),
