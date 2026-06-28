@@ -1,13 +1,6 @@
-/**
- * /api/predictions — sample protected resource.
- *
- * Demonstrates how to import and apply `requireAuth`.  Because the middleware
- * runs before every handler on this router, TypeScript knows `req.user` is
- * defined (non-optional) inside the callbacks.
- */
-
 import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth";
+import { getPredictionExplanation } from "../services/predictionExplainService";
 
 export const predictionsRouter = Router();
 
@@ -19,8 +12,20 @@ predictionsRouter.use(requireAuth);
  * Returns predictions belonging to the authenticated user.
  */
 predictionsRouter.get("/", (req, res) => {
-  // req.user is guaranteed to be defined here because requireAuth
-  // would have returned 401 before reaching this handler.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   res.json({ data: [], user: (req as any).user });
+});
+
+/**
+ * GET /api/predictions/:id/explain
+ * Returns the resolution computation trail for a prediction (educational endpoint).
+ * Shows oracle inputs, market resolution, and payout calculation.
+ */
+predictionsRouter.get("/:id/explain", async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const explanation = await getPredictionExplanation(id);
+    res.json(explanation);
+  } catch (error) {
+    next(error);
+  }
 });
