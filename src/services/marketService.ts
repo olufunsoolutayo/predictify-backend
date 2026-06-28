@@ -23,65 +23,113 @@ export class VersionConflictError extends Error {
   }
 }
 
+/**
+ * Lists active markets with pagination.
+ *
+ * @param options.limit - Number of results to return (default: 50)
+ * @param options.offset - Pagination offset (default: 0)
+ * @returns Array of markets formatted with ISO timestamps
+ * @throws Error if database query fails
+ */
 export async function listMarkets(options: { limit?: number; offset?: number } = {}): Promise<any[]> {
   const limit = options.limit ?? 50;
   const offset = options.offset ?? 0;
-  try {
-    const rows = await getDb()
-      .select({
-        id: markets.id,
-        question: markets.question,
-        status: markets.status,
-        resolutionTime: markets.resolutionTime,
-      })
-      .from(markets)
-      .where(eq(markets.archived, false))
-      .orderBy(asc(markets.resolutionTime), asc(markets.id))
-      .limit(limit)
-      .offset(offset);
-    if (Array.isArray(rows)) {
-      return rows.map((r: any) => ({
-        ...r,
-        resolutionTime: r.resolutionTime instanceof Date ? r.resolutionTime.toISOString() : r.resolutionTime,
-      }));
-    }
-  } catch (e) {
-    // fallback if query builder structure differs
+
+  const rows = await getDb()
+    .select({
+      id: markets.id,
+      question: markets.question,
+      status: markets.status,
+      resolutionTime: markets.resolutionTime,
+    })
+    .from(markets)
+    .where(eq(markets.archived, false))
+    .orderBy(asc(markets.resolutionTime), asc(markets.id))
+    .limit(limit)
+    .offset(offset);
+
+  if (!Array.isArray(rows)) {
+    throw new Error("Unexpected response from database: rows is not an array");
   }
-  const result = await getDb().select().from(markets);
-  return Array.isArray(result) ? result : [];
+
+  return rows.map((r: any) => ({
+    ...r,
+    resolutionTime: r.resolutionTime instanceof Date ? r.resolutionTime.toISOString() : r.resolutionTime,
+  }));
 }
 
+/**
+ * Retrieves a single market by ID.
+ *
+ * @param id - The market ID to fetch
+ * @returns Market object with formatted timestamp, or null if not found
+ * @throws Error if database query fails
+ */
 export async function getMarketById(id: string): Promise<any | null> {
-  try {
-    const rows = await getDb()
-      .select({
-        id: markets.id,
-        question: markets.question,
-        status: markets.status,
-        resolutionTime: markets.resolutionTime,
-      })
-      .from(markets)
-      .where(eq(markets.id, id))
-      .limit(1);
-    if (Array.isArray(rows) && rows[0]) {
-      const r = rows[0];
-      return {
-        ...r,
-        resolutionTime: r.resolutionTime instanceof Date ? r.resolutionTime.toISOString() : r.resolutionTime,
-      };
-    }
-  } catch (e) {}
-  const result = await getDb().select().from(markets).where(eq(markets.id, id)).limit(1);
-  return result[0] || null;
+  if (!id || typeof id !== "string") {
+    throw new Error("Market ID must be a non-empty string");
+  }
+
+  const rows = await getDb()
+    .select({
+      id: markets.id,
+      question: markets.question,
+      status: markets.status,
+      resolutionTime: markets.resolutionTime,
+    })
+    .from(markets)
+    .where(eq(markets.id, id))
+    .limit(1);
+
+  if (!Array.isArray(rows)) {
+    throw new Error("Unexpected response from database: rows is not an array");
+  }
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  const r = rows[0];
+  return {
+    ...r,
+    resolutionTime: r.resolutionTime instanceof Date ? r.resolutionTime.toISOString() : r.resolutionTime,
+  };
 }
 
+/**
+ * Updates a market with optimistic locking via version field.
+ *
+ * Performs transactional update with:
+ * - Version conflict detection (409)
+ * - Audit log creation
+ * - Structured event emission
+ *
+ * @param id - Market ID
+ * @param patch - Fields to update (question, metadata)
+ * @param expectedVersion - Current version for optimistic locking
+ * @param adminAddress - Stellar address of the admin making the change
+ * @returns Updated market object
+ * @throws VersionConflictError if version mismatch
+ * @throws Error with status 404 if market not found
+ */
 export async function updateMarket(
   id: string,
   patch: { question?: string; metadata?: any },
   expectedVersion: number,
   adminAddress: string
 ): Promise<any> {
+  if (!id || typeof id !== "string") {
+    throw new Error("Market ID must be a non-empty string");
+  }
+
+  if (typeof expectedVersion !== "number" || expectedVersion < 0) {
+    throw new Error("expectedVersion must be a non-negative number");
+  }
+
+  if (!adminAddress || typeof adminAddress !== "string") {
+    throw new Error("adminAddress must be a non-empty string");
+  }
+
   const result = await db.transaction(async (tx) => {
     const existing = await tx.select().from(markets).where(eq(markets.id, id)).limit(1);
     if (existing.length === 0) {
@@ -135,4 +183,3 @@ export async function updateMarket(
 
   return result;
 }
-
