@@ -3,12 +3,14 @@ import { listMarkets, getMarketById, updateMarket, VersionConflictError } from "
 import { searchMarkets } from "../repositories/marketRepository";
 import { requireAdmin, AuthenticatedRequest } from "../middleware/auth";
 import { rateLimitAnon } from "../middleware/rateLimitAnon";
+import { trendingRouter } from "./markets/trending";
 import { z } from "zod";
 import { logger } from "../config/logger";
 
 export const marketsRouter = Router();
 
 marketsRouter.use(rateLimitAnon);
+marketsRouter.use("/trending", trendingRouter);
 
 const patchMarketSchema = z.object({
   question: z.string().optional(),
