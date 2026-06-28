@@ -147,14 +147,30 @@ export function createRateLimiter(options: Partial<Options> = {}): RateLimitRequ
         rateLimitContext,
       });
 
+      // Seconds the client should wait before retrying. Derived from the
+      // window reset time and never negative; defaults to a 1s minimum so the
+      // header is always actionable.
+      const retryAfterSeconds = Math.max(
+        1,
+        Math.ceil((new Date(resetAt).getTime() - Date.now()) / 1000),
+      );
+
       logger.warn(
-        { correlationId, ip, rateLimitContext },
+        { correlationId, ip, rateLimitContext, retryAfterSeconds },
         "rate_limit_blocked",
       );
 
-      // Follow project error envelope: { error: { code } }
+      // Standardized 429: RFC 7231 `Retry-After` header (seconds) plus a
+      // structured envelope echoing the same value and the reset timestamp so
+      // clients can back off without parsing headers.
+      res.setHeader("Retry-After", String(retryAfterSeconds));
       res.status(429).json({
-        error: { code: "rate_limit_exceeded" },
+        error: {
+          code: "rate_limit_exceeded",
+          message: "Too many requests. Please retry after the indicated delay.",
+          retryAfter: retryAfterSeconds,
+          resetAt,
+        },
       });
     },
   });
