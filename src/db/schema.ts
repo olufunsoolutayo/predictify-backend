@@ -114,6 +114,9 @@ export const markets = pgTable("markets", {
   indexedLedger: integer("indexed_ledger").notNull(),
   archived: boolean("archived").notNull().default(false),
   version: integer("version").notNull().default(1),
+  featured: boolean("featured").notNull().default(false),
+  featuredAt: timestamp("featured_at", { withTimezone: true }),
+  featuredBy: text("featured_by"),
 });
 
 export const marketAuditLog = pgTable("market_audit_log", {
