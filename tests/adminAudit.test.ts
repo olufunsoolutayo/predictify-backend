@@ -2,14 +2,16 @@ import request from "supertest";
 import express from "express";
 import jwt from "jsonwebtoken";
 import { createAdminAuditRouter } from "../src/routes/admin/audit";
+import { createAdminAuditExportRouter } from "../src/routes/admin/audit/export";
 import { errorHandler } from "../src/middleware/errorHandler";
 
 // ── Mock Repository ─────────────────────────────────────────────────────────
 
 jest.mock("../src/repositories/auditLogRepo");
 
-import { getAuditLogs } from "../src/repositories/auditLogRepo";
+import { getAuditLogs, getAuditLogsStream } from "../src/repositories/auditLogRepo";
 const mockGetAuditLogs = getAuditLogs as jest.MockedFunction<typeof getAuditLogs>;
+const mockGetAuditLogsStream = getAuditLogsStream as jest.MockedFunction<typeof getAuditLogsStream>;
 
 // ── DB Mock (Prevents connection at import time) ─────────────────────────────
 
@@ -33,10 +35,11 @@ const userJwt  = signJwt({ sub: USER_ADDRESS,  role: "user" });
 
 // ── App Factory ──────────────────────────────────────────────────────────────
 
-function makeApp(rateLimitPerMinute = 60): express.Express {
+function makeApp(rateLimitPerMinute = 60, maxRecords = 100_000): express.Express {
   const app = express();
   app.use(express.json());
   app.use("/api/admin/audit", createAdminAuditRouter({ rateLimitPerMinute }));
+  app.use("/api/admin/audit", createAdminAuditExportRouter({ rateLimitPerMinute, maxRecords }));
   app.use(errorHandler);
   return app;
 }
@@ -156,6 +159,117 @@ describe("GET /api/admin/audit", () => {
         ],
         nextCursor: null,
       });
+    });
+  });
+
+  describe("GET /api/admin/audit/export", () => {
+    it("returns 403 with no Authorization header", async () => {
+      const res = await request(makeApp()).get("/api/admin/audit/export");
+      expect(res.status).toBe(403);
+      expect(res.body).toEqual({ error: { code: "forbidden" } });
+    });
+
+    it("returns 403 with a non-admin JWT", async () => {
+      const res = await request(makeApp())
+        .get("/api/admin/audit/export")
+        .set("Authorization", `Bearer ${userJwt}`);
+      expect(res.status).toBe(403);
+    });
+
+    it("returns 400 for invalid startDate format", async () => {
+      const res = await request(makeApp())
+        .get("/api/admin/audit/export?startDate=2024-01-01")
+        .set("Authorization", `Bearer ${adminJwt}`);
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("validation_error");
+      expect(res.body.error.message).toContain("startDate must be a valid ISO 8601 datetime string");
+    });
+
+    it("returns 400 for invalid endDate format", async () => {
+      const res = await request(makeApp())
+        .get("/api/admin/audit/export?endDate=2024-13-45T25:00:00Z")
+        .set("Authorization", `Bearer ${adminJwt}`);
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe("validation_error");
+      expect(res.body.error.message).toContain("endDate must be a valid ISO 8601 datetime string");
+    });
+
+    it("streams audit records as NDJSON with correct headers", async () => {
+      mockGetAuditLogsStream.mockImplementation(async function* () {
+        yield {
+          id: "1",
+          action: "market.create",
+          walletAddress: ADMIN_ADDRESS,
+          ip: "127.0.0.1",
+          correlationId: "corr-1",
+          rateLimitContext: null,
+          createdAt: new Date("2026-06-27T12:00:00Z"),
+        };
+      });
+
+      const res = await request(makeApp())
+        .get("/api/admin/audit/export?action=market.create&actor=" + ADMIN_ADDRESS)
+        .set("Authorization", `Bearer ${adminJwt}`);
+
+      expect(res.status).toBe(200);
+      expect(res.headers["content-type"]).toMatch(/application\/x-ndjson/);
+      expect(res.headers["x-content-type-options"]).toBe("nosniff");
+      expect(res.headers["content-disposition"]).toMatch(/^attachment; filename="audit-export-\d+\.ndjson"$/);
+      expect(res.text).toBe(
+        JSON.stringify({
+          id: "1",
+          action: "market.create",
+          walletAddress: ADMIN_ADDRESS,
+          ip: "127.0.0.1",
+          correlationId: "corr-1",
+          rateLimitContext: null,
+          createdAt: new Date("2026-06-27T12:00:00Z"),
+        }) + "\n",
+      );
+      expect(mockGetAuditLogsStream).toHaveBeenCalledWith({
+        action: "market.create",
+        actor: ADMIN_ADDRESS,
+      });
+    });
+
+    it("enforces maxRecords and stops streaming after the limit", async () => {
+      mockGetAuditLogsStream.mockImplementation(async function* () {
+        yield {
+          id: "1",
+          action: "market.create",
+          walletAddress: ADMIN_ADDRESS,
+          ip: "127.0.0.1",
+          correlationId: "corr-1",
+          rateLimitContext: null,
+          createdAt: new Date("2026-06-27T12:00:00Z"),
+        };
+        yield {
+          id: "2",
+          action: "market.update",
+          walletAddress: ADMIN_ADDRESS,
+          ip: "127.0.0.1",
+          correlationId: "corr-2",
+          rateLimitContext: null,
+          createdAt: new Date("2026-06-27T12:30:00Z"),
+        };
+      });
+
+      const res = await request(makeApp(60, 1))
+        .get("/api/admin/audit/export")
+        .set("Authorization", `Bearer ${adminJwt}`);
+
+      expect(res.status).toBe(200);
+      expect(res.text).toBe(
+        JSON.stringify({
+          id: "1",
+          action: "market.create",
+          walletAddress: ADMIN_ADDRESS,
+          ip: "127.0.0.1",
+          correlationId: "corr-1",
+          rateLimitContext: null,
+          createdAt: new Date("2026-06-27T12:00:00Z"),
+        }) + "\n",
+      );
     });
   });
 });

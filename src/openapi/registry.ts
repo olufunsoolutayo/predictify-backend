@@ -573,3 +573,43 @@ registry.registerPath({
     },
   },
 });
+
+registry.registerPath({
+  method: "get",
+  path: "/api/admin/audit/export",
+  tags: ["Admin"],
+  summary: "Export audit log as NDJSON",
+  security: [{ bearerAuth: [] }],
+  request: {
+    query: z.object({
+      action: z.string().optional(),
+      actor: z.string().optional(),
+      startDate: z.string().datetime().optional(),
+      endDate: z.string().datetime().optional(),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Audit log export stream in NDJSON format",
+      content: {
+        "application/x-ndjson": { schema: z.string() },
+      },
+    },
+    400: {
+      description: "Validation error",
+      content: { "application/json": { schema: ValidationErrorBody } },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorBody } },
+    },
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ErrorBody } },
+    },
+    429: {
+      description: "Rate limit exceeded",
+      content: { "application/json": { schema: ErrorBody } },
+    },
+  },
+});
