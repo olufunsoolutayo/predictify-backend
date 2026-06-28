@@ -4,6 +4,19 @@ import pinoHttp from "pino-http";
 import { v4 as uuidv4 } from "uuid";
 import { env } from "./config/env";
 import { logger } from "./config/logger";
+import { metricsMiddleware } from "./metrics/httpMetrics";
+import { idempotency } from "./middleware/idempotency";
+import { healthRouter } from "./routes/health";
+import dependenciesRouter from "./routes/healthz/dependencies";
+import { authRouter } from "./routes/auth";
+import { marketsRouter } from "./routes/markets";
+import { usersRouter } from "./routes/users";
+import { leaderboardRouter } from "./routes/leaderboard";
+import { createDocsRouter } from "./routes/docs";
+import { errorHandler } from "./middleware/errorHandler";
+import { requestContextStorage } from "./lib/requestContext";
+import { REQUEST_ID_HEADER } from "./lib/http";
+import { register } from "./metrics/registry";
 import { connectWithRetry, closeDb } from "./db/client";
 import { REQUEST_ID_HEADER } from "./lib/http";
 import { requestContextStorage } from "./lib/requestContext";
@@ -77,6 +90,7 @@ export function createApp(): express.Express {
 
   app.use(metricsMiddleware);
   app.use("/health", healthRouter);
+  app.use("/healthz/dependencies", dependenciesRouter);
 
   const mutationMethods = ["POST", "PATCH"] as const;
   app.use("/api", (req, res, next) =>
@@ -117,15 +131,8 @@ if (require.main === module) {
   connectWithRetry()
     .then(() => {
       app.listen(env.PORT, () => {
-        logger.info(
-          { port: env.PORT, env: env.NODE_ENV },
-          "predictify-backend listening",
-        );
-        if (docsEnabled) {
-          logger.info(
-            `Swagger UI available at http://localhost:${env.PORT}/docs`,
-          );
-        }
+        logger.info({ port: env.PORT, env: env.NODE_ENV }, "predictify-backend listening");
+        logger.info(`Swagger UI available at http://localhost:${env.PORT}/docs`);
       });
     })
     .catch((err) => {
