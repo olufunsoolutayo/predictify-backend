@@ -22,6 +22,7 @@ import { REQUEST_ID_HEADER } from "./lib/http";
 import { register } from "./metrics/registry";
 import { connectWithRetry, closeDb } from "./db/client";
 import { stopScheduler } from "./services/scheduler";
+import { startRefreshAggregatesWorker } from "./workers/refreshAggregates";
 
 const docsEnabled = env.NODE_ENV !== "production" || process.env.ENABLE_DOCS === "true";
 
@@ -113,9 +114,11 @@ export function createApp(): express.Express {
 
 if (require.main === module) {
   const app = createApp();
+  let refreshWorker: NodeJS.Timeout | undefined;
 
   connectWithRetry()
     .then(() => {
+      refreshWorker = startRefreshAggregatesWorker();
       app.listen(env.PORT, () => {
         logger.info({ port: env.PORT, env: env.NODE_ENV }, "predictify-backend listening");
         logger.info(`Swagger UI available at http://localhost:${env.PORT}/docs`);
@@ -133,6 +136,7 @@ if (require.main === module) {
       process.exit(1);
     }, 5000).unref();
 
+    if (refreshWorker) clearInterval(refreshWorker);
     stopScheduler();
     await closeDb();
     clearTimeout(forceExit);
@@ -141,6 +145,7 @@ if (require.main === module) {
 
   process.on("SIGINT", () => {
     logger.info("SIGINT received, shutting down gracefully");
+    if (refreshWorker) clearInterval(refreshWorker);
     stopScheduler();
     process.exit(0);
   });
