@@ -29,6 +29,16 @@ export interface Page<T> {
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 100;
 
+/**
+ * Cursor wire-format version. Bump this whenever the meaning of the encoded
+ * `(sortValue, id)` pair changes (e.g. a schema migration that re-types or
+ * re-orders the sort columns). Cursors minted under a different version are
+ * rejected by `decodeCursor` (treated as invalid → restart from page one)
+ * instead of being silently re-interpreted, which previously let the keyset
+ * predicate advance to the wrong offset after a migration.
+ */
+export const CURSOR_VERSION = "v1";
+
 /** Clamp a user-supplied limit into a safe range. */
 export function clampLimit(raw: unknown, fallback = DEFAULT_PAGE_SIZE): number {
   const n = typeof raw === "string" ? parseInt(raw, 10) : typeof raw === "number" ? raw : NaN;
@@ -38,7 +48,9 @@ export function clampLimit(raw: unknown, fallback = DEFAULT_PAGE_SIZE): number {
 
 /** Encode a cursor key to an opaque, URL-safe string. */
 export function encodeCursor(key: CursorKey): string {
-  return Buffer.from(`${key.sortValue}|${key.id}`, "utf8").toString("base64url");
+  return Buffer.from(`${CURSOR_VERSION}|${key.sortValue}|${key.id}`, "utf8").toString(
+    "base64url",
+  );
 }
 
 /**
@@ -50,10 +62,18 @@ export function decodeCursor(raw: unknown): CursorKey | null {
   if (typeof raw !== "string" || raw.length === 0) return null;
   try {
     const decoded = Buffer.from(raw, "base64url").toString("utf8");
-    const sep = decoded.indexOf("|");
+    // Versioned format: "<version>|<sortValue>|<id>". The version guards against
+    // re-interpreting a cursor whose encoding changed across a schema migration.
+    const firstSep = decoded.indexOf("|");
+    if (firstSep === -1) return null;
+    const version = decoded.slice(0, firstSep);
+    if (version !== CURSOR_VERSION) return null;
+
+    const rest = decoded.slice(firstSep + 1);
+    const sep = rest.indexOf("|");
     if (sep === -1) return null;
-    const sortValue = decoded.slice(0, sep);
-    const id = decoded.slice(sep + 1);
+    const sortValue = rest.slice(0, sep);
+    const id = rest.slice(sep + 1);
     if (!sortValue || !id) return null;
     return { sortValue, id };
   } catch {
