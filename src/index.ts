@@ -20,8 +20,12 @@ import { errorHandler } from "./middleware/errorHandler";
 import { requestContextStorage } from "./lib/requestContext";
 import { REQUEST_ID_HEADER } from "./lib/http";
 import { register } from "./metrics/registry";
-import { connectWithRetry, closeDb } from "./db/client";
+import { connectWithRetry, closeDb, db } from "./db/client";
 import { stopScheduler } from "./services/scheduler";
+import { WebhookWorker } from "./workers/webhookWorker";
+import { marketResolverWorker } from "./workers/marketResolver";
+import { backupVerificationWorker } from "./workers/backupVerificationWorker";
+import { reconciliationWorker } from "./workers/reconciliationWorker";
 
 const docsEnabled = env.NODE_ENV !== "production" || process.env.ENABLE_DOCS === "true";
 
@@ -113,9 +117,26 @@ export function createApp(): express.Express {
 
 if (require.main === module) {
   const app = createApp();
+  let webhookWorker: WebhookWorker | null = null;
+
+  const stopWorkers = async (): Promise<void> => {
+    logger.info("Stopping queue workers");
+    await Promise.all([
+      webhookWorker ? webhookWorker.stop() : Promise.resolve(),
+      marketResolverWorker.stop(),
+      backupVerificationWorker.stop(),
+      reconciliationWorker.stop(),
+    ]);
+  };
 
   connectWithRetry()
     .then(() => {
+      webhookWorker = new WebhookWorker(db);
+      webhookWorker.start();
+      marketResolverWorker.start();
+      backupVerificationWorker.start();
+      reconciliationWorker.start();
+
       app.listen(env.PORT, () => {
         logger.info({ port: env.PORT, env: env.NODE_ENV }, "predictify-backend listening");
         logger.info(`Swagger UI available at http://localhost:${env.PORT}/docs`);
@@ -133,15 +154,24 @@ if (require.main === module) {
       process.exit(1);
     }, 5000).unref();
 
+    await stopWorkers();
     stopScheduler();
     await closeDb();
     clearTimeout(forceExit);
     process.exit(0);
   });
 
-  process.on("SIGINT", () => {
+  process.on("SIGINT", async () => {
     logger.info("SIGINT received, shutting down gracefully");
+    const forceExit = setTimeout(() => {
+      logger.warn("Forced exit after shutdown timeout");
+      process.exit(1);
+    }, 5000).unref();
+
+    await stopWorkers();
     stopScheduler();
+    await closeDb();
+    clearTimeout(forceExit);
     process.exit(0);
   });
 }

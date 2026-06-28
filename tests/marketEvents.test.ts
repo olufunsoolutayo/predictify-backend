@@ -10,7 +10,7 @@ import type { IndexerEvent } from "../src/db/schema";
 describe("toStreamEvent", () => {
   it("converts a DB row to a StreamEvent", () => {
     const row: IndexerEvent = {
-      id: 42,
+      id: "42",
       marketId: "mkt-1",
       eventType: "prediction",
       data: { outcome: "yes", amount: "100" },
@@ -26,7 +26,7 @@ describe("toStreamEvent", () => {
 
   it("handles null data field", () => {
     const row: IndexerEvent = {
-      id: 1,
+      id: "1",
       marketId: "mkt-1",
       eventType: "resolved",
       data: null,
