@@ -8,6 +8,9 @@ import { logger } from "../config/logger";
 
 export const marketsRouter = Router();
 
+import { disputesRouter } from "./disputes";
+marketsRouter.use("/:id/disputes", disputesRouter);
+
 marketsRouter.use(rateLimitAnon);
 
 const patchMarketSchema = z.object({
