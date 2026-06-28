@@ -136,3 +136,64 @@ export async function updateMarket(
   return result;
 }
 
+export class MarketAlreadyDisabledError extends Error {
+  status = 409;
+  code = "already_disabled";
+  constructor() {
+    super("Market already disabled");
+    Object.setPrototypeOf(this, MarketAlreadyDisabledError.prototype);
+  }
+}
+
+/**
+ * Disable a market for editorial moderation (#213).
+ *
+ * Sets `status = "disabled"` and records a structured audit entry. Idempotency
+ * is enforced at the row level: a market that is already disabled yields a 409
+ * rather than a duplicate audit entry. Returns the updated market row.
+ */
+export async function disableMarket(
+  id: string,
+  reason: string,
+  adminAddress: string,
+): Promise<any> {
+  const result = await db.transaction(async (tx) => {
+    const existing = await tx.select().from(markets).where(eq(markets.id, id)).limit(1);
+    if (existing.length === 0) {
+      const err = new Error("Market not found");
+      (err as any).status = 404;
+      throw err;
+    }
+
+    const current = existing[0];
+    if (current.status === "disabled") {
+      throw new MarketAlreadyDisabledError();
+    }
+
+    const updated = await tx
+      .update(markets)
+      .set({ status: "disabled", version: current.version + 1 })
+      .where(eq(markets.id, id))
+      .returning();
+
+    await tx.insert(marketAuditLog).values({
+      marketId: id,
+      adminAddress,
+      action: "disable",
+      beforeState: { status: current.status, version: current.version },
+      afterState: { status: "disabled", version: updated[0].version, reason },
+    });
+
+    return updated[0];
+  });
+
+  emitMarketEvent(LogEvent.MARKET_UPDATED, {
+    marketId: id,
+    actor: adminAddress,
+    version: result.version,
+    fieldsUpdated: ["status"],
+  });
+
+  return result;
+}
+
