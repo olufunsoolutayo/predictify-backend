@@ -30,6 +30,11 @@ npm run db:migrate
 npm run dev                  # predev hook re-runs check-env automatically
 ```
 
+Once running:
+
+- **Swagger UI** → http://localhost:3000/docs *(non-production only; set `ENABLE_DOCS=true` to enable in production)*
+- **OpenAPI JSON** → http://localhost:3000/openapi.json *(always available)*
+
 ## Indexer gap scan
 
 The gap-scan worker detects missing ledger ranges in `indexer_events` between the durable cursor and chain tip, emits `indexer_gap_detected_total{from,to}`, and self-heals via `backfillRange`:
@@ -86,6 +91,17 @@ npm test -- tests/refreshToken.test.ts
 ```
 
 The refresh-token test suite covers rotation, expiry handling, reuse detection, logout family revocation, and hash-only storage.
+
+## Social graph
+
+Follow graph mutations are exposed at:
+
+- `POST /api/users/:addr/follow`
+- `DELETE /api/users/:addr/follow`
+
+These endpoints require authentication, enforce `users.is_private`, update
+cached `followers_count` and `following_count` values transactionally, and
+write structured audit entries with the request correlation ID.
 
 ## License
 

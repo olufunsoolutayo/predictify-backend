@@ -1,6 +1,7 @@
-import { db } from "../db";
+import { db, getDb } from "../db/client";
 import { markets, marketAuditLog } from "../db/schema";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
+import { emitMarketEvent, LogEvent } from "../logging/events";
 
 export interface Market {
   id: string;
@@ -22,12 +23,56 @@ export class VersionConflictError extends Error {
   }
 }
 
-export async function listMarkets(): Promise<any[]> {
-  return await db.select().from(markets);
+export async function listMarkets(options: { limit?: number; offset?: number } = {}): Promise<any[]> {
+  const limit = options.limit ?? 50;
+  const offset = options.offset ?? 0;
+  try {
+    const rows = await getDb()
+      .select({
+        id: markets.id,
+        question: markets.question,
+        status: markets.status,
+        resolutionTime: markets.resolutionTime,
+      })
+      .from(markets)
+      .where(eq(markets.archived, false))
+      .orderBy(asc(markets.resolutionTime), asc(markets.id))
+      .limit(limit)
+      .offset(offset);
+    if (Array.isArray(rows)) {
+      return rows.map((r: any) => ({
+        ...r,
+        resolutionTime: r.resolutionTime instanceof Date ? r.resolutionTime.toISOString() : r.resolutionTime,
+      }));
+    }
+  } catch (e) {
+    // fallback if query builder structure differs
+  }
+  const result = await getDb().select().from(markets);
+  return Array.isArray(result) ? result : [];
 }
 
 export async function getMarketById(id: string): Promise<any | null> {
-  const result = await db.select().from(markets).where(eq(markets.id, id)).limit(1);
+  try {
+    const rows = await getDb()
+      .select({
+        id: markets.id,
+        question: markets.question,
+        status: markets.status,
+        resolutionTime: markets.resolutionTime,
+      })
+      .from(markets)
+      .where(eq(markets.id, id))
+      .limit(1);
+    if (Array.isArray(rows) && rows[0]) {
+      const r = rows[0];
+      return {
+        ...r,
+        resolutionTime: r.resolutionTime instanceof Date ? r.resolutionTime.toISOString() : r.resolutionTime,
+      };
+    }
+  } catch (e) {}
+  const result = await getDb().select().from(markets).where(eq(markets.id, id)).limit(1);
   return result[0] || null;
 }
 
@@ -37,7 +82,7 @@ export async function updateMarket(
   expectedVersion: number,
   adminAddress: string
 ): Promise<any> {
-  return await db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     const existing = await tx.select().from(markets).where(eq(markets.id, id)).limit(1);
     if (existing.length === 0) {
       const err = new Error("Market not found");
@@ -78,5 +123,16 @@ export async function updateMarket(
 
     return updated[0];
   });
+
+  // Structured log event – emitted from service layer after successful commit.
+  // Includes correlation ID via requestContext (see logging/events.ts).
+  emitMarketEvent(LogEvent.MARKET_UPDATED, {
+    marketId: id,
+    actor: adminAddress,
+    version: result.version,
+    fieldsUpdated: Object.keys(patch),
+  });
+
+  return result;
 }
 

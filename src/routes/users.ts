@@ -1,25 +1,46 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
 import { z } from "zod";
-import { getUserByAddress, getUserPredictions } from "../services/userService";
+import { getUserByAddress, getUserPredictions, getCurrentUserProfile, getUserProfile } from "../services/userService";
+import { requireAuthForbidden } from "../middleware/requireAuth";
+import { AuthenticatedRequest } from "../middleware/auth";
+import { logger } from "../config/logger";
+import { getRequestId } from "../lib/requestContext";
 
 export const usersRouter = Router();
 
-// Stellar address validation pattern
 const stellarAddressSchema = z.string().regex(/^G[A-Z2-7]{55}$/, "Invalid Stellar address");
 
-usersRouter.get("/:address/predictions", async (req, res, next) => {
+usersRouter.get("/me", requireAuthForbidden, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
-    const { address } = req.params;
+    const userId = req.user!.id;
+    const result = await getCurrentUserProfile(userId);
+
+    if (!result.ok) {
+      throw result.error;
+    }
+
+    const profile = result.value;
+    logger.info(
+      { userId, stellarAddress: profile.stellarAddress, ...profile.totals },
+      "user_me_profile_loaded",
+    );
+    return res.json({ data: profile });
+  } catch (e) {
+    return next(e);
+  }
+});
+
+usersRouter.get("/:address/predictions", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const address = req.params.address as string;
     const { status, cursor, limit = "20" } = req.query;
 
-    // Validate address format
     try {
       stellarAddressSchema.parse(address);
     } catch (e) {
       return res.status(400).json({ error: { code: "invalid_address" } });
     }
 
-    // Validate query params
     const querySchema = z.object({
       status: z.enum(["pending", "confirmed", "won", "lost", "claimed"]).optional(),
       cursor: z.string().optional(),
@@ -28,13 +49,11 @@ usersRouter.get("/:address/predictions", async (req, res, next) => {
 
     const query = querySchema.parse({ status, cursor, limit: parseInt(limit as string) });
 
-    // Find user
     const user = await getUserByAddress(address);
     if (!user) {
       return res.status(404).json({ error: { code: "not_found" } });
     }
 
-    // Get predictions
     const result = await getUserPredictions(user.id, {
       status: query.status,
       limit: query.limit,
@@ -46,7 +65,53 @@ usersRouter.get("/:address/predictions", async (req, res, next) => {
       nextCursor: result.nextCursor,
     });
   } catch (e) {
-    next(e);
-    return;
+    return next(e);
+  }
+});
+
+usersRouter.get("/:stellarAddress/profile", async (req: Request, res: Response, next: NextFunction) => {
+  const reqId = getRequestId() ?? (typeof (req as { id?: unknown }).id === "string" ? (req as { id?: string }).id : undefined);
+
+  const parseResult = stellarAddressSchema.safeParse(req.params.stellarAddress);
+  if (!parseResult.success) {
+    logger.warn(
+      { reqId, stellarAddress: req.params.stellarAddress, issues: parseResult.error.issues },
+      "user_profile_validation_failed",
+    );
+    return res.status(400).json({
+      error: {
+        code: "validation_error",
+        message: parseResult.error.issues[0]?.message ?? "invalid stellar address",
+        requestId: reqId,
+      },
+    });
+  }
+
+  const stellarAddress = parseResult.data;
+
+  try {
+    logger.debug({ reqId, stellarAddress }, "user_profile_lookup");
+
+    const profile = await getUserProfile(stellarAddress);
+
+    if (!profile) {
+      logger.debug({ reqId, stellarAddress }, "user_profile_not_found");
+      return res.status(404).json({
+        error: {
+          code: "not_found",
+          message: "no user found with that stellar address",
+          requestId: reqId,
+        },
+      });
+    }
+
+    logger.debug(
+      { reqId, stellarAddress, predictionCount: profile.predictions.length },
+      "user_profile_found",
+    );
+
+    return res.json({ data: profile });
+  } catch (err) {
+    return next(err);
   }
 });

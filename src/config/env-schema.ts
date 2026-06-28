@@ -26,13 +26,16 @@ export const envSchema = z.object({
   INDEXER_START_LEDGER: z.coerce.number().int().nonnegative().default(0),
   INDEXER_REWIND_LEDGERS: z.coerce.number().int().positive().default(100),
 
-  // ── Geo-blocking ──────────────────────────────────────────
-  // Comma-separated ISO 3166-1 alpha-2 country codes to block (e.g. "RU,KP")
-  GEO_BLOCKED_COUNTRIES: z.string().default("").transform((val) =>
-    val.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean),
-  ),
-  // Absolute path to a MaxMind GeoLite2-Country.mmdb file
-  MMDB_PATH: z.string().default(""),
+  // ── Anonymous rate limiting ───────────────────────────────
+  ANON_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  ANON_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
+  TRUST_PROXY: z.coerce.boolean().default(false),
+
+  // ── Captcha gate (per-IP, unauthenticated endpoints) ─────
+  /** Number of requests per IP per window before captcha is required (0 = disabled) */
+  CAPTCHA_THRESHOLD: z.coerce.number().int().nonnegative().default(10),
+  /** Sliding window length for captcha threshold tracking (ms) */
+  CAPTCHA_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
 });
 
 export type Env = z.infer<typeof envSchema>;

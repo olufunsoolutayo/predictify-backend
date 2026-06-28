@@ -1,8 +1,12 @@
 import { Router } from "express";
 import { z } from "zod";
 import { getLeaderboard, getLeaderboardWithRefresh, getUserLeaderboardEntry } from "../services/leaderboardService";
+import { rateLimitAnon } from "../middleware/rateLimitAnon";
 
 export const leaderboardRouter = Router();
+
+// Throttle anonymous read traffic; authenticated Bearer callers bypass.
+leaderboardRouter.use(rateLimitAnon);
 
 const leaderboardQuerySchema = z.object({
   limit: z.coerce.number().int().positive().max(100).default(50),
@@ -38,7 +42,8 @@ leaderboardRouter.get("/user/:stellarAddress", async (req, res, next) => {
   try {
     const entry = await getUserLeaderboardEntry(req.params.stellarAddress);
     if (!entry) {
-      return res.status(404).json({ error: { code: "not_found" } });
+      res.status(404).json({ error: { code: "not_found" } });
+      return;
     }
     res.json({ data: entry });
   } catch (e) {
