@@ -1,5 +1,5 @@
 import express from "express";
-import helmet from "helmet";
+
 import pinoHttp from "pino-http";
 import { v4 as uuidv4 } from "uuid";
 import { env } from "./config/env";
@@ -20,6 +20,10 @@ import { leaderboardRouter } from "./routes/leaderboard";
 import { createDocsRouter } from "./routes/docs";
 import { adminUsersRouter } from "./routes/adminUsers";
 import { adminReconciliationRouter } from "./routes/admin/reconciliation";
+import {
+  createDocsCspMiddleware,
+  createGlobalCspMiddleware,
+} from "./middleware/csp";
 
 const REQUEST_ID_MAX_LENGTH = 64;
 
@@ -37,8 +41,8 @@ export function createApp(): express.Express {
     app.set("trust proxy", true);
   }
 
-  app.use("/docs", createDocsRouter());
-  app.use(helmet());
+  app.use("/docs", createDocsCspMiddleware(), createDocsRouter());
+  app.use(createGlobalCspMiddleware());
   app.use(express.json({ limit: "256kb" }));
 
   app.use(
