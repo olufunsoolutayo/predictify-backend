@@ -84,7 +84,48 @@ This starter is intentionally minimal. The full backlog is tracked in GitHub Iss
 - If a revoked refresh token is presented again, the service treats it as suspected theft and revokes every still-active token in the same `familyId`.
 - `POST /api/auth/logout` accepts the same body and revokes the remaining active tokens in that refresh-token family.
 
-## Refresh Token Tests
+## Testing
+
+### Unit Tests
+
+Run the unit test suite:
+
+```bash
+npm test              # Run all tests
+npm run test:unit     # Run unit tests only (excludes E2E)
+npm run test:coverage # Run with coverage report
+```
+
+### E2E Tests
+
+End-to-end tests validate the complete prediction lifecycle on Stellar testnet:
+
+```bash
+npm run test:e2e           # Run E2E tests
+npm run test:e2e:coverage  # Run E2E tests with coverage
+```
+
+**E2E tests validate:**
+- User authentication with wallet signatures
+- Market creation on testnet
+- Placing predictions
+- Market resolution
+- Claiming winnings
+- Data consistency across the lifecycle
+
+**Setup required:**
+- Funded Stellar testnet account
+- Deployed Predictify contract on testnet
+- Test database (separate from dev/prod)
+
+See [tests/e2e/README.md](tests/e2e/README.md) and [docs/e2e-testing.md](docs/e2e-testing.md) for detailed setup and usage.
+
+**CI/CD:**
+- E2E tests run nightly at 2 AM UTC
+- Manual trigger via GitHub Actions
+- Automatic issue creation on failure
+
+### Refresh Token Tests
 
 ```bash
 npm test -- tests/refreshToken.test.ts

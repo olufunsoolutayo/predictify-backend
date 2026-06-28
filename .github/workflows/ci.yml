@@ -37,7 +37,8 @@ jobs:
 
       - run: npm run lint
 
-      - run: npm run test
+      - name: Run unit tests
+        run: npm run test:unit
 
       - name: Check schema drift
         run: npm run db:check-drift
