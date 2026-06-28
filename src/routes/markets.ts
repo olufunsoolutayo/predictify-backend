@@ -102,6 +102,7 @@ marketsRouter.patch("/:id", requireAdmin, async (req: AuthenticatedRequest, res,
     const { question, metadata, expectedVersion } = parsed.data;
     const adminAddress = req.user!.stellarAddress;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const patch: { question?: string; metadata?: any } = {};
     if (question !== undefined) patch.question = question;
     if (metadata !== undefined) patch.metadata = metadata;
@@ -112,6 +113,7 @@ marketsRouter.patch("/:id", requireAdmin, async (req: AuthenticatedRequest, res,
     if (e instanceof VersionConflictError) {
       return res.status(409).json({ error: { code: "version_conflict" } });
     }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((e as any).status === 404) {
       return res.status(404).json({ error: { code: "not_found" } });
     }

@@ -1,3 +1,4 @@
+import { invalidateMarketCache } from "../cache/marketsCache";
 import { db, getDb } from "../db/client";
 import { markets, marketAuditLog } from "../db/schema";
 import { asc, eq } from "drizzle-orm";
@@ -8,6 +9,7 @@ export interface Market {
   question: string;
   status: string;
   resolutionTime: Date;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata: any;
   indexedLedger: number;
   archived: boolean;
@@ -23,6 +25,7 @@ export class VersionConflictError extends Error {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function listMarkets(options: { limit?: number; offset?: number } = {}): Promise<any[]> {
   const limit = options.limit ?? 50;
   const offset = options.offset ?? 0;
@@ -52,6 +55,7 @@ export async function listMarkets(options: { limit?: number; offset?: number } =
   return Array.isArray(result) ? result : [];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getMarketById(id: string): Promise<any | null> {
   try {
     const rows = await getDb()
@@ -78,14 +82,17 @@ export async function getMarketById(id: string): Promise<any | null> {
 
 export async function updateMarket(
   id: string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   patch: { question?: string; metadata?: any },
   expectedVersion: number,
   adminAddress: string
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any> {
   const result = await db.transaction(async (tx) => {
     const existing = await tx.select().from(markets).where(eq(markets.id, id)).limit(1);
     if (existing.length === 0) {
       const err = new Error("Market not found");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (err as any).status = 404;
       throw err;
     }
@@ -121,11 +128,12 @@ export async function updateMarket(
       },
     });
 
+    // Invalidate related cache entries
+    await invalidateMarketCache(id);
     return updated[0];
   });
 
   // Structured log event – emitted from service layer after successful commit.
-  // Includes correlation ID via requestContext (see logging/events.ts).
   emitMarketEvent(LogEvent.MARKET_UPDATED, {
     marketId: id,
     actor: adminAddress,
@@ -135,4 +143,3 @@ export async function updateMarket(
 
   return result;
 }
-

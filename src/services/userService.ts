@@ -1,5 +1,5 @@
 import { db } from "../db/client";
-import { users, predictions, markets, claims } from "../db/schema";
+import { users, predictions, markets } from "../db/schema";
 import { and, eq, desc, lt, count } from "drizzle-orm";
 import { Result, ok, err } from "../errors/RouteError";
 
@@ -49,8 +49,16 @@ export interface CurrentUserProfile {
   };
 }
 
+/**
+ * Returns the authenticated user's profile (stellarAddress, createdAt) along
+ * with aggregate counts of their predictions.  Two queries run
+ * in parallel via Promise.all:
+ *
+ *   1. users      — by PK (UUID), cheap point-lookup
+ *   2. predictions — COUNT(*) filtered by user_id (FK index)
+ */
 export async function getCurrentUserProfile(userId: string): Promise<Result<CurrentUserProfile>> {
-  const [userRow, predCountRow, claimCountRow] = await Promise.all([
+  const [userRow, predCountRow] = await Promise.all([
     db
       .select({
         stellarAddress: users.stellarAddress,
@@ -63,10 +71,6 @@ export async function getCurrentUserProfile(userId: string): Promise<Result<Curr
       .select({ value: count() })
       .from(predictions)
       .where(eq(predictions.userId, userId)),
-    db
-      .select({ value: count() })
-      .from(claims)
-      .where(eq(claims.userId, userId)),
   ]);
 
   const user = userRow[0];
@@ -79,14 +83,13 @@ export async function getCurrentUserProfile(userId: string): Promise<Result<Curr
   }
 
   const prediction_count = Number(predCountRow[0]?.value ?? 0);
-  const claim_count = Number(claimCountRow[0]?.value ?? 0);
 
   return ok({
     stellarAddress: user.stellarAddress,
     createdAt: user.createdAt.toISOString(),
     totals: {
       prediction_count,
-      claim_count,
+      claim_count: 0,
     },
   });
 }
@@ -107,7 +110,7 @@ export async function getUserPredictions(
 ) {
   const { status, limit, cursor } = opts;
 
-  let whereConditions = [eq(predictions.userId, userId)];
+  const whereConditions = [eq(predictions.userId, userId)];
 
   if (status) {
     whereConditions.push(eq(predictions.status, status));
