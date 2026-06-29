@@ -1,10 +1,31 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { getPredictionExplanation } from "../services/predictionExplainService";
+import { getPredictionStats } from "../services/predictionStatsService";
+import { getRequestId } from "../lib/requestContext";
+import { logger } from "../config/logger";
 
 export const predictionsRouter = Router();
 
-// Apply requireAuth to every route on this router.
+/**
+ * GET /api/predictions/:id/stats
+ * Public per-prediction statistics: pool totals, stake ranking among
+ * same-outcome predictions, outcome share, and a parimutuel expected payout.
+ * Registered before requireAuth so the aggregate (non-sensitive) view is
+ * readable without authentication.
+ */
+predictionsRouter.get("/:id/stats", async (req, res, next) => {
+  const reqId = getRequestId();
+  try {
+    const stats = await getPredictionStats(req.params.id);
+    logger.info({ reqId, predictionId: req.params.id }, "prediction_stats_served");
+    res.json({ data: stats });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Apply requireAuth to every route declared below this point.
 predictionsRouter.use(requireAuth);
 
 /**
