@@ -59,6 +59,32 @@ authRouter.post("/logout", async (req, res, next) => {
   }
 });
 
+/**
+ * POST /api/auth/wallet/logout
+ *
+ * Explicit wallet logout. Revokes the entire refresh-token family associated
+ * with the supplied refresh token so that every session derived from the same
+ * login is invalidated server-side. Idempotent: revoking an already-revoked or
+ * unknown token still returns 204 so clients can safely retry.
+ */
+authRouter.post("/wallet/logout", async (req, res, next) => {
+  try {
+    const refreshToken = parseRefreshToken(req.body);
+
+    if (!refreshToken) {
+      res.status(400).json({
+        error: { code: "invalid_request", message: "refreshToken is required and must be a string" },
+      });
+      return;
+    }
+
+    await revokeFamily(refreshToken);
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+});
+
 const challengeBodySchema = z.object({
   stellarAddress: z.string().min(1),
 });
