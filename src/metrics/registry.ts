@@ -1,4 +1,4 @@
-import { Registry, Counter, Histogram, collectDefaultMetrics } from "prom-client";
+import { Registry, Counter, Histogram, Gauge, collectDefaultMetrics } from "prom-client";
 
 export const register = new Registry();
 
@@ -29,5 +29,11 @@ export const authVerificationsTotal = new Counter({
   name: "auth_verifications_total",
   help: "Total number of authentication verification attempts, segmented by outcome (success, failure)",
   labelNames: ["outcome"] as const,
+  registers: [register],
+});
+
+export const indexerLagLedgers = new Gauge({
+  name: "indexer_lag_ledgers",
+  help: "Current indexer lag in ledgers (chain tip minus last indexed ledger)",
   registers: [register],
 });

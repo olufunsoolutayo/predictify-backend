@@ -22,6 +22,7 @@ import { REQUEST_ID_HEADER } from "./lib/http";
 import { register } from "./metrics/registry";
 import { connectWithRetry, closeDb } from "./db/client";
 import { stopScheduler } from "./services/scheduler";
+import { startIndexerHealthProbe, stopIndexerHealthProbe } from "./jobs/indexerHealthProbe";
 
 const docsEnabled = env.NODE_ENV !== "production" || process.env.ENABLE_DOCS === "true";
 
@@ -116,32 +117,36 @@ if (require.main === module) {
 
   connectWithRetry()
     .then(() => {
+      const probeHandle = startIndexerHealthProbe();
+
       app.listen(env.PORT, () => {
         logger.info({ port: env.PORT, env: env.NODE_ENV }, "predictify-backend listening");
         logger.info(`Swagger UI available at http://localhost:${env.PORT}/docs`);
+      });
+
+      process.on("SIGTERM", async () => {
+        logger.info("SIGTERM received, shutting down");
+        const forceExit = setTimeout(() => {
+          logger.warn("Forced exit after shutdown timeout");
+          process.exit(1);
+        }, 5000).unref();
+
+        stopIndexerHealthProbe(probeHandle);
+        stopScheduler();
+        await closeDb();
+        clearTimeout(forceExit);
+        process.exit(0);
+      });
+
+      process.on("SIGINT", () => {
+        logger.info("SIGINT received, shutting down gracefully");
+        stopIndexerHealthProbe(probeHandle);
+        stopScheduler();
+        process.exit(0);
       });
     })
     .catch((err) => {
       logger.fatal({ err }, "Failed to start server");
       process.exit(1);
     });
-
-  process.on("SIGTERM", async () => {
-    logger.info("SIGTERM received, shutting down");
-    const forceExit = setTimeout(() => {
-      logger.warn("Forced exit after shutdown timeout");
-      process.exit(1);
-    }, 5000).unref();
-
-    stopScheduler();
-    await closeDb();
-    clearTimeout(forceExit);
-    process.exit(0);
-  });
-
-  process.on("SIGINT", () => {
-    logger.info("SIGINT received, shutting down gracefully");
-    stopScheduler();
-    process.exit(0);
-  });
 }
