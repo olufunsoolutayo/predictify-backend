@@ -4,14 +4,7 @@ import { redis } from "../config/redis";
 import { LeaderboardPeriod } from "../routes/leaderboard";
 import { logger } from "../config/logger";
 
-export interface LeaderboardEntry extends Record<string, unknown> {
-  user_id: string;
-  stellar_address: string;
-  total_predictions: number;
-  correct_predictions: number;
-  accuracy_percentage: number;
-  rank: number;
-}
+export type LeaderboardEntry = AddressAggregate;
 
 /**
  * Build the materialized view name based on period
