@@ -573,3 +573,84 @@ registry.registerPath({
     },
   },
 });
+
+// ── /api/admin/health/detail ─────────────────────────────────────────────────
+
+const CheckStatus = z
+  .enum(["ok", "degraded", "error"])
+  .openapi("CheckStatus");
+
+const DbPoolStats = z
+  .object({
+    total: z.number().int().describe("Total connections in pool"),
+    idle: z.number().int().describe("Idle (available) connections"),
+    waiting: z.number().int().describe("Clients waiting for a connection"),
+  })
+  .openapi("DbPoolStats");
+
+const DbPoolCheck = z
+  .object({
+    status: CheckStatus,
+    latencyMs: z.number().int(),
+    stats: DbPoolStats,
+    error: z.string().optional(),
+  })
+  .openapi("DbPoolCheck");
+
+const IndexerCheck = z
+  .object({
+    status: CheckStatus,
+    latencyMs: z.number().int(),
+    lastIndexedLedger: z.number().int().nullable(),
+    chainTip: z.number().int().nullable(),
+    lagLedgers: z.number().int().nullable(),
+    error: z.string().optional(),
+  })
+  .openapi("IndexerCheck");
+
+const RpcCheck = z
+  .object({
+    status: CheckStatus,
+    latencyMs: z.number().int(),
+    latestLedger: z.number().int().nullable(),
+    error: z.string().optional(),
+  })
+  .openapi("RpcCheck");
+
+const AdminHealthDetail = z
+  .object({
+    dbPool: DbPoolCheck,
+    indexer: IndexerCheck,
+    rpc: RpcCheck,
+    checkedAt: z.string().datetime(),
+  })
+  .openapi("AdminHealthDetail");
+
+registry.registerPath({
+  method: "get",
+  path: "/api/admin/health/detail",
+  tags: ["Admin"],
+  summary: "Detailed runtime health (admin only)",
+  description:
+    "Returns DB pool stats, indexer cursor/lag, and Soroban RPC status. " +
+    "Returns 207 when any sub-check is degraded or errored.",
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: {
+      description: "All checks healthy",
+      content: { "application/json": { schema: AdminHealthDetail } },
+    },
+    207: {
+      description: "One or more checks degraded or errored",
+      content: { "application/json": { schema: AdminHealthDetail } },
+    },
+    403: {
+      description: "Forbidden — missing or non-admin JWT",
+      content: { "application/json": { schema: ErrorBody } },
+    },
+    429: {
+      description: "Rate limit exceeded",
+      content: { "application/json": { schema: ErrorBody } },
+    },
+  },
+});
