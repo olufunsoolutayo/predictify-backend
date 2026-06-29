@@ -1,0 +1,1140 @@
+openapi: 3.1.0
+info:
+  title: Predictify API
+  version: 0.0.1
+  description: Backend API for Predictify — a Stellar/Soroban prediction-markets dApp
+servers:
+  - url: /
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ErrorBody:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            requestId:
+              type: string
+          required:
+            - code
+      required:
+        - error
+    ValidationErrorBody:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            details:
+              nullable: true
+          required:
+            - code
+      required:
+        - error
+    DependencyHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+            - degraded
+            - down
+        correlationId:
+          type: string
+        checkedAt:
+          type: string
+          format: date-time
+        dependencies:
+          type: object
+          additionalProperties:
+            type: object
+            properties:
+              status:
+                type: string
+                enum:
+                  - ok
+                  - degraded
+                  - down
+              latencyMs:
+                type: number
+              error:
+                type: string
+            required:
+              - status
+      required:
+        - status
+        - correlationId
+        - checkedAt
+        - dependencies
+    ChallengeResponse:
+      type: object
+      properties:
+        nonce:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+        - nonce
+        - expiresAt
+    ChallengeRequest:
+      type: object
+      properties:
+        stellarAddress:
+          type: string
+      required:
+        - stellarAddress
+    TokenPair:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        refreshToken:
+          type: string
+      required:
+        - accessToken
+        - refreshToken
+    VerifyRequest:
+      type: object
+      properties:
+        stellarAddress:
+          type: string
+        nonce:
+          type: string
+        signature:
+          type: string
+      required:
+        - stellarAddress
+        - nonce
+        - signature
+    RefreshRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+      required:
+        - refreshToken
+    Market:
+      type: object
+      properties:
+        id:
+          type: string
+        question:
+          type: string
+        status:
+          type: string
+        metadata:
+          nullable: true
+        version:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - question
+        - status
+        - version
+        - createdAt
+    MarketSearchResult:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Market'
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+        page:
+          type: integer
+        fallback:
+          type: boolean
+        pagination:
+          type: object
+          properties:
+            limit:
+              type: integer
+            offset:
+              type: integer
+            page:
+              type: integer
+            total:
+              type: integer
+            fallback:
+              type: boolean
+          required:
+            - limit
+            - offset
+            - page
+            - total
+            - fallback
+        meta:
+          type: object
+          properties:
+            limit:
+              type: integer
+            offset:
+              type: integer
+            page:
+              type: integer
+            total:
+              type: integer
+            fallback:
+              type: boolean
+          required:
+            - limit
+            - offset
+            - page
+            - total
+            - fallback
+      required:
+        - data
+        - total
+        - limit
+        - offset
+        - page
+        - fallback
+        - pagination
+        - meta
+    PatchMarketRequest:
+      type: object
+      properties:
+        question:
+          type: string
+        metadata:
+          nullable: true
+        expectedVersion:
+          type: integer
+          minimum: 0
+      required:
+        - expectedVersion
+    LeaderboardEntry:
+      type: object
+      properties:
+        rank:
+          type: integer
+        stellarAddress:
+          type: string
+        score:
+          type: number
+      required:
+        - rank
+        - stellarAddress
+        - score
+    NotificationCategory:
+      type: string
+      enum:
+        - market_resolved
+        - claim_ready
+        - dispute_opened
+    NotificationChannel:
+      type: string
+      enum:
+        - email
+        - webhook
+    NotificationPreference:
+      type: object
+      properties:
+        category:
+          $ref: '#/components/schemas/NotificationCategory'
+        channel:
+          $ref: '#/components/schemas/NotificationChannel'
+        enabled:
+          type: boolean
+      required:
+        - category
+        - channel
+        - enabled
+    NotificationPreferencesResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            preferences:
+              type: array
+              items:
+                $ref: '#/components/schemas/NotificationPreference'
+          required:
+            - preferences
+      required:
+        - data
+    PatchNotificationPreferencesRequest:
+      type: object
+      properties:
+        preferences:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationPreference'
+          minItems: 1
+      required:
+        - preferences
+    CurrentUserProfile:
+      type: object
+      properties:
+        stellarAddress:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        totals:
+          type: object
+          properties:
+            prediction_count:
+              type: integer
+            claim_count:
+              type: integer
+          required:
+            - prediction_count
+            - claim_count
+      required:
+        - stellarAddress
+        - createdAt
+        - totals
+    Prediction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        marketId:
+          type: string
+        status:
+          type: string
+          enum: &ref_0
+            - pending
+            - confirmed
+            - won
+            - lost
+            - claimed
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - marketId
+        - status
+        - createdAt
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        stellarAddress:
+          type: string
+        joinedAt:
+          type: string
+          format: date-time
+        predictions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Prediction'
+        totals:
+          type: object
+          properties:
+            prediction_count:
+              type: integer
+            claim_count:
+              type: integer
+          required:
+            - prediction_count
+            - claim_count
+      required:
+        - id
+        - stellarAddress
+        - joinedAt
+        - predictions
+        - totals
+    FollowResult:
+      type: object
+      properties:
+        follower:
+          type: string
+        followee:
+          type: string
+        followedAt:
+          type: string
+          format: date-time
+      required:
+        - follower
+        - followee
+        - followedAt
+    AuditEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        action:
+          type: string
+        actor:
+          type: string
+        targetAddress:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - action
+        - createdAt
+  parameters: {}
+paths:
+  /health:
+    get:
+      operationId: healthCheck
+      tags:
+        - Health
+      summary: Liveness check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                required:
+                  - status
+  /healthz/dependencies:
+    get:
+      operationId: healthDependencies
+      tags:
+        - Health
+      summary: External dependency health probes
+      responses:
+        '200':
+          description: All dependencies healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DependencyHealth'
+        '207':
+          description: Some dependencies degraded
+        '503':
+          description: One or more dependencies down
+  /metrics:
+    get:
+      operationId: getMetrics
+      tags:
+        - Monitoring
+      summary: Prometheus metrics endpoint
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Prometheus text format metrics
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: Unauthorized (if METRICS_AUTH_TOKEN is set)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/auth/challenge:
+    post:
+      operationId: authChallenge
+      tags:
+        - Auth
+      summary: Request a sign-in challenge nonce
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChallengeRequest'
+      responses:
+        '201':
+          description: Challenge issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChallengeResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorBody'
+  /api/auth/verify:
+    post:
+      operationId: authVerify
+      tags:
+        - Auth
+      summary: Verify challenge signature and obtain JWT
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyRequest'
+      responses:
+        '200':
+          description: Tokens issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorBody'
+        '401':
+          description: Invalid signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/auth/refresh:
+    post:
+      operationId: authRefresh
+      tags:
+        - Auth
+      summary: Rotate a refresh token
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '200':
+          description: New token pair
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenPair'
+        '400':
+          description: Missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: Reuse detected — family revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/auth/logout:
+    post:
+      operationId: authLogout
+      tags:
+        - Auth
+      summary: Revoke the entire refresh-token family
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshRequest'
+      responses:
+        '204':
+          description: Logged out
+        '400':
+          description: Missing token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/markets:
+    get:
+      operationId: listMarkets
+      tags:
+        - Markets
+      summary: List all markets
+      responses:
+        '200':
+          description: Array of markets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Market'
+                required:
+                  - data
+  /api/markets/search:
+    get:
+      operationId: searchMarkets
+      tags:
+        - Markets
+      summary: Full-text search across markets
+      parameters:
+        - schema:
+            type: string
+            minLength: 1
+          required: true
+          name: q
+          in: query
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            default: 20
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: integer
+            nullable: true
+            minimum: 0
+            default: 0
+          required: false
+          name: offset
+          in: query
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          required: false
+          name: page
+          in: query
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketSearchResult'
+        '400':
+          description: Missing query parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/markets/{id}:
+    get:
+      operationId: getMarketById
+      tags:
+        - Markets
+      summary: Get a market by ID
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      responses:
+        '200':
+          description: Market
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Market'
+                required:
+                  - data
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+    patch:
+      operationId: updateMarket
+      tags:
+        - Markets
+      summary: Update a market (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchMarketRequest'
+      responses:
+        '200':
+          description: Updated market
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Market'
+                required:
+                  - data
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorBody'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '409':
+          description: Version conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/leaderboard:
+    get:
+      operationId: getLeaderboard
+      tags:
+        - Leaderboard
+      summary: Get global leaderboard
+      parameters:
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+            maximum: 100
+            default: 50
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: integer
+            nullable: true
+            minimum: 0
+            default: 0
+          required: false
+          name: offset
+          in: query
+        - schema:
+            type: boolean
+            nullable: true
+            default: false
+          required: false
+          name: refresh
+          in: query
+      responses:
+        '200':
+          description: Leaderboard entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/LeaderboardEntry'
+                  meta:
+                    type: object
+                    properties:
+                      limit:
+                        type: number
+                      offset:
+                        type: number
+                      count:
+                        type: number
+                      refresh:
+                        type: boolean
+                    required:
+                      - limit
+                      - offset
+                      - count
+                      - refresh
+                required:
+                  - data
+                  - meta
+  /api/leaderboard/user/{stellarAddress}:
+    get:
+      operationId: getLeaderboardUser
+      tags:
+        - Leaderboard
+      summary: Get leaderboard entry for a specific user
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: stellarAddress
+          in: path
+      responses:
+        '200':
+          description: Entry
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/LeaderboardEntry'
+                required:
+                  - data
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/notifications/preferences:
+    get:
+      operationId: getNotificationPreferences
+      tags:
+        - Notifications
+      summary: Get the authenticated user’s notification preferences
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Notification preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferencesResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+    patch:
+      operationId: patchNotificationPreferences
+      tags:
+        - Notifications
+      summary: Update notification preferences for the authenticated user
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchNotificationPreferencesRequest'
+      responses:
+        '200':
+          description: Updated notification preferences
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferencesResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorBody'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/users/me:
+    get:
+      operationId: getCurrentUser
+      tags:
+        - Users
+      summary: Get the authenticated user’s profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/CurrentUserProfile'
+                required:
+                  - data
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/users/{address}/predictions:
+    get:
+      operationId: getUserPredictions
+      tags:
+        - Users
+      summary: List predictions for a Stellar address
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: address
+          in: path
+        - schema:
+            type: string
+            enum: *ref_0
+          required: false
+          name: status
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          required: false
+          name: limit
+          in: query
+      responses:
+        '200':
+          description: Paginated predictions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Prediction'
+                  nextCursor:
+                    type: string
+                    nullable: true
+                required:
+                  - data
+                  - nextCursor
+        '400':
+          description: Invalid address
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/users/{stellarAddress}/profile:
+    get:
+      operationId: getUserProfile
+      tags:
+        - Users
+      summary: Get a user’s public profile
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: stellarAddress
+          in: path
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UserProfile'
+                required:
+                  - data
+        '400':
+          description: Invalid Stellar address
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/users/{addr}/follow:
+    post:
+      operationId: followUser
+      tags:
+        - Social
+      summary: Follow a user
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: addr
+          in: path
+      responses:
+        '200':
+          description: Follow relationship created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FollowResult'
+                required:
+                  - data
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorBody'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+    delete:
+      operationId: unfollowUser
+      tags:
+        - Social
+      summary: Unfollow a user
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: true
+          name: addr
+          in: path
+      responses:
+        '200':
+          description: Follow relationship removed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/FollowResult'
+                required:
+                  - data
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorBody'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+  /api/admin/audit:
+    get:
+      operationId: getAdminAuditLog
+      tags:
+        - Admin
+      summary: List audit log entries (admin only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+          required: false
+          name: action
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: actor
+          in: query
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: startDate
+          in: query
+        - schema:
+            type: string
+            format: date-time
+          required: false
+          name: endDate
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+        - schema:
+            type: integer
+            minimum: 0
+            exclusiveMinimum: true
+          required: false
+          name: limit
+          in: query
+      responses:
+        '200':
+          description: Paginated audit log
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AuditEntry'
+                  nextCursor:
+                    type: string
+                    nullable: true
+                required:
+                  - data
+                  - nextCursor
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
