@@ -267,6 +267,26 @@ const MarketSearchResult = z
 
 registry.registerPath({
   method: "get",
+  path: "/api/markets/recommendations",
+  tags: ["Markets"],
+  summary: "Get personalized market recommendations",
+  security: [{ bearerAuth: [] }],
+  responses: {
+    200: {
+      description: "Array of recommended markets",
+      content: {
+        "application/json": { schema: z.object({ data: z.array(Market) }) },
+      },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorBody } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "get",
   path: "/api/markets",
   operationId: "listMarkets",
   tags: ["Markets"],

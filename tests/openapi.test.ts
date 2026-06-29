@@ -69,6 +69,8 @@ describe("OpenAPI spec generation", () => {
     const paths = spec.paths ?? {};
     const patchMarket = (paths["/api/markets/{id}"] as Record<string, unknown>)
       ?.patch as Record<string, unknown>;
+    const marketRecommendations = (paths["/api/markets/recommendations"] as Record<string, unknown>)
+      ?.get as Record<string, unknown>;
     expect(patchMarket?.security).toEqual([{ bearerAuth: [] }]);
 
     const meRoute = (paths["/api/users/me"] as Record<string, unknown>)
