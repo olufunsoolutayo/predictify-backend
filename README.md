@@ -104,6 +104,39 @@ These endpoints require authentication, enforce `users.is_private`, update
 cached `followers_count` and `following_count` values transactionally, and
 write structured audit entries with the request correlation ID.
 
+## Run with Docker
+
+You can spin up the entire Predictify stack (API, Indexer, and PostgreSQL) using Docker Compose.
+
+### Prerequisites
+- [Docker](https://docs.docker.com/get-docker/) installed and running.
+- A local `.env` file generated from `.env.example`. Ensure `DATABASE_URL` is set to `postgres://postgres:postgres@db:5432/predictify` for Docker compatibility.
+
+### Commands
+
+1. **Start the stack:**
+   ```bash
+   docker compose up --build
+   ```
+   
+2. Verify the services:
+   Once booted, the API will be available at http://localhost:3001.
+   Check the health endpoint:
+   ```bash
+   curl localhost:3001/health
+   # Expected response: 200 OK
+   ```
+### Notes
+* The migrate service runs automatically on startup to ensure the database schema is up-to-date before the API and Indexer start.
+
+* The indexer service runs as a persistent container; check the logs with docker compose logs -f indexer if you encounter sync issues.
+
+### Implementation Notes for Review
+*   **Performance:** Multi-stage builds reduce the final image size by excluding source code and dev dependencies.
+*   **Security:** By using `USER node` and `slim` base images, we reduce the attack surface.
+*   **Resilience:** The `depends_on` condition using `service_healthy` or `service_completed_successfully` ensures the database is ready and migrations are applied before application services boot, preventing race conditions.
+*   **Supply-Chain:** The base image is pinned by a specific digest. **Important:** When you run this, verify the digest matches your local build requirements, or update it to the latest `node:20-bookworm-slim` digest if you prefer the absolute latest patch version.
+
 ## License
 
 MIT
