@@ -12,6 +12,9 @@ export const marketsRouter = Router();
 marketsRouter.use(rateLimitAnon);
 marketsRouter.use("/trending", trendingRouter);
 
+// Per-market audit log: GET /api/markets/:id/audit (#216)
+marketsRouter.use("/:id/audit", marketAuditRouter);
+
 const patchMarketSchema = z.object({
   question: z.string().optional(),
   metadata: z.any().optional(),
