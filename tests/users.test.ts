@@ -1,6 +1,6 @@
 import request from "supertest";
 import { createApp } from "../src/index";
-import { db } from "../src/db/connection";
+import { db } from "../src/db";
 import { users, markets, predictions } from "../src/db/schema";
 import { eq } from "drizzle-orm";
 

@@ -37,7 +37,7 @@ usersRouter.get("/:address/predictions", async (req: Request, res: Response, nex
 
     try {
       stellarAddressSchema.parse(address);
-    } catch (e) {
+    } catch {
       return res.status(400).json({ error: { code: "invalid_address" } });
     }
 
@@ -69,49 +69,59 @@ usersRouter.get("/:address/predictions", async (req: Request, res: Response, nex
   }
 });
 
-usersRouter.get("/:stellarAddress/profile", async (req: Request, res: Response, next: NextFunction) => {
-  const reqId = getRequestId() ?? (typeof (req as { id?: unknown }).id === "string" ? (req as { id?: string }).id : undefined);
+/**
+ * GET /api/users/:stellarAddress/profile
+ *
+ * Public endpoint — no authentication required.
+ *
+ * Returns the profile for the user identified by `stellarAddress`.
+ */
+usersRouter.get(
+  "/:stellarAddress/profile",
+  async (req: Request, res: Response, next: NextFunction) => {
+    const reqId = getRequestId();
 
-  const parseResult = stellarAddressSchema.safeParse(req.params.stellarAddress);
-  if (!parseResult.success) {
-    logger.warn(
-      { reqId, stellarAddress: req.params.stellarAddress, issues: parseResult.error.issues },
-      "user_profile_validation_failed",
-    );
-    return res.status(400).json({
-      error: {
-        code: "validation_error",
-        message: parseResult.error.issues[0]?.message ?? "invalid stellar address",
-        requestId: reqId,
-      },
-    });
-  }
-
-  const stellarAddress = parseResult.data;
-
-  try {
-    logger.debug({ reqId, stellarAddress }, "user_profile_lookup");
-
-    const profile = await getUserProfile(stellarAddress);
-
-    if (!profile) {
-      logger.debug({ reqId, stellarAddress }, "user_profile_not_found");
-      return res.status(404).json({
+    const parseResult = stellarAddressSchema.safeParse(req.params.stellarAddress);
+    if (!parseResult.success) {
+      logger.warn(
+        { reqId, stellarAddress: req.params.stellarAddress, issues: parseResult.error.issues },
+        "user_profile_validation_failed",
+      );
+      return res.status(400).json({
         error: {
-          code: "not_found",
-          message: "no user found with that stellar address",
+          code: "validation_error",
+          message: parseResult.error.issues[0]?.message ?? "invalid stellar address",
           requestId: reqId,
         },
       });
     }
 
-    logger.debug(
-      { reqId, stellarAddress, predictionCount: profile.predictions.length },
-      "user_profile_found",
-    );
+    const stellarAddress = parseResult.data;
 
-    return res.json({ data: profile });
-  } catch (err) {
-    return next(err);
-  }
-});
+    try {
+      logger.debug({ reqId, stellarAddress }, "user_profile_lookup");
+
+      const profile = await getUserProfile(stellarAddress);
+
+      if (!profile) {
+        logger.debug({ reqId, stellarAddress }, "user_profile_not_found");
+        return res.status(404).json({
+          error: {
+            code: "not_found",
+            message: "no user found with that stellar address",
+            requestId: reqId,
+          },
+        });
+      }
+
+      logger.debug(
+        { reqId, stellarAddress, predictionCount: profile.predictions.length },
+        "user_profile_found",
+      );
+
+      return res.json({ data: profile });
+    } catch (err) {
+      return next(err);
+    }
+  },
+);

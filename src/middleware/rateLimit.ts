@@ -26,6 +26,7 @@ import { logger } from "../config/logger";
  * that can be consumed by downstream middleware or route handlers.
  */
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
   namespace Express {
     interface Request {
       /** Rate-limit context set by the rateLimit middleware on every request */

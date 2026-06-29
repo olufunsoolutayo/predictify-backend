@@ -36,7 +36,7 @@ export function requireAdmin(req: AuthenticatedRequest, res: Response, next: Nex
 
     req.user = { id: stellarAddress, stellarAddress };
     next();
-  } catch (err) {
+  } catch {
     res.status(401).json({ error: { code: "unauthorized" } });
   }
 }
