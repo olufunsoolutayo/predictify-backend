@@ -1,7 +1,7 @@
 import { invalidateMarketCache } from "../cache/marketsCache";
 import { db, getDb } from "../db/client";
 import { markets, marketAuditLog } from "../db/schema";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import { emitMarketEvent, LogEvent } from "../logging/events";
 
 export interface Market {
