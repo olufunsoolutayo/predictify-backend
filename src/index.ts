@@ -10,6 +10,7 @@ import { healthRouter } from "./routes/health";
 import dependenciesRouter from "./routes/healthz/dependencies";
 import { authRouter } from "./routes/auth";
 import { marketsRouter } from "./routes/markets";
+import { predictionsRouter } from "./routes/predictions";
 import { usersRouter } from "./routes/users";
 import { leaderboardRouter } from "./routes/leaderboard";
 import { createDocsRouter } from "./routes/docs";
@@ -92,6 +93,7 @@ export function createApp(): express.Express {
 
   app.use("/api/auth", authRouter);
   app.use("/api/markets", marketsRouter);
+  app.use("/api/predictions", predictionsRouter);
   app.use("/api/leaderboard", leaderboardRouter);
   app.use("/api/notifications", notificationsRouter);
   app.use("/api/users", socialRouter);

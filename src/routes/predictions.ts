@@ -1,10 +1,22 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth";
 import { getPredictionExplanation } from "../services/predictionExplainService";
+import { createShareRouter } from "./predictions/share";
 
 export const predictionsRouter = Router();
 
-// Apply requireAuth to every route on this router.
+// ── Public sub-routers (no auth required) ────────────────────────────────
+// Must be registered before the requireAuth guard so bots / crawlers can
+// fetch social-preview metadata without credentials.
+
+/**
+ * GET /api/predictions/:id/share
+ * Returns OG + Twitter card metadata for a prediction.
+ * Public — no authentication required.
+ */
+predictionsRouter.use("/", createShareRouter());
+
+// ── Authenticated routes ──────────────────────────────────────────────────
 predictionsRouter.use(requireAuth);
 
 /**
