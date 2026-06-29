@@ -98,6 +98,7 @@ export function createApp(): express.Express {
   app.use("/api/notifications", notificationsRouter);
   app.use("/api/users", socialRouter);
   app.use("/api/users", usersRouter);
+  app.use("/api/me/devices", devicesRouter);
   app.use("/api/admin/audit", adminAuditRouter);
   app.use("/api/admin/markets", adminMarketsRouter);
 
