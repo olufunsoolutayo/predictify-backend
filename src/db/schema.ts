@@ -163,6 +163,23 @@ export const claims = pgTable("claims", {
     .defaultNow(),
 });
 
+export const marketComments = pgTable("market_comments", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  marketId: text("market_id")
+    .notNull()
+    .references(() => markets.id),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+}, (t) => ({
+  marketCommentsMarketCreatedIdx: index("market_comments_market_created_idx").on(t.marketId, t.createdAt),
+  marketCommentsUserCreatedIdx: index("market_comments_user_created_idx").on(t.userId, t.createdAt),
+}));
+
 export const disputes = pgTable("disputes", {
   id: uuid("id").primaryKey().defaultRandom(),
   userId: uuid("user_id")

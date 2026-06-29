@@ -33,3 +33,9 @@ HTTP **429 Too Many Requests** with:
 ```bash
 npm test -- tests/rateLimitAnon.test.ts
 ```
+
+## Authenticated market-comment writes
+
+`POST /api/markets/:id/comments` is authenticated and rate limited per user after JWT authentication succeeds. The default limit is **5 comments per user per minute**. Blocked requests return HTTP `429` with `error.code` set to `rate_limited`.
+
+The endpoint accepts JSON `{ "content": "..." }`, trims surrounding whitespace, stores comments up to 1000 characters, and returns the created comment with HTTP `201`.

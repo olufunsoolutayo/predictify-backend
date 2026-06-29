@@ -22,6 +22,7 @@ describe("OpenAPI spec", () => {
     expect(paths).toContain("/api/markets");
     expect(paths).toContain("/api/notifications/preferences");
     expect(paths).toContain("/api/markets/{id}");
+    expect(paths).toContain("/api/markets/{id}/comments");
     expect(paths).toContain("/api/markets/{id}/disputes");
     expect(paths).toContain("/api/users/{address}/predictions");
     expect(paths).toContain("/api/predictions");

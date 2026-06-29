@@ -5,10 +5,12 @@ import { requireAdmin, AuthenticatedRequest } from "../middleware/auth";
 import { rateLimitAnon } from "../middleware/rateLimitAnon";
 import { z } from "zod";
 import { logger } from "../config/logger";
+import { marketCommentsRouter } from "./markets/comments";
 
 export const marketsRouter = Router();
 
 marketsRouter.use(rateLimitAnon);
+marketsRouter.use("/:id/comments", marketCommentsRouter);
 
 const patchMarketSchema = z.object({
   question: z.string().optional(),
