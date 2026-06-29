@@ -36,6 +36,10 @@ import type { DlqRow, NewDelivery, WebhookDelivery, WebhookStore } from "./webho
 // Public types
 // ---------------------------------------------------------------------------
 
+export interface WebhookDispatcher {
+  replayFromDlq(row: unknown): Promise<unknown>;
+}
+
 /** Subset of the delivery row returned to callers. */
 export interface DeliveryRecord {
   id: string;

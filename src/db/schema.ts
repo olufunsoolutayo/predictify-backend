@@ -220,10 +220,7 @@ export const claims = pgTable("claims", {
 
 export const disputes = pgTable("disputes", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => users.id),
-  openedBy: uuid("user_id")
+  openedBy: uuid("opened_by")
     .notNull()
     .references(() => users.id),
   marketId: text("market_id")
