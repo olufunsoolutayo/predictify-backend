@@ -16,10 +16,10 @@ import { createDocsRouter } from "./routes/docs";
 import { notificationsRouter } from "./routes/notifications";
 import { socialRouter } from "./routes/social";
 import { adminAuditRouter } from "./routes/admin/audit";
+import { metricsRouter } from "./routes/metrics";
 import { errorHandler } from "./middleware/errorHandler";
 import { requestContextStorage } from "./lib/requestContext";
 import { REQUEST_ID_HEADER } from "./lib/http";
-import { register } from "./metrics/registry";
 import { connectWithRetry, closeDb } from "./db/client";
 import { stopScheduler } from "./services/scheduler";
 
@@ -92,20 +92,7 @@ export function createApp(): express.Express {
   app.use("/api/users", socialRouter);
   app.use("/api/users", usersRouter);
   app.use("/api/admin/audit", adminAuditRouter);
-
-  app.get("/metrics", async (req, res) => {
-    const metricsAuthToken = process.env.METRICS_AUTH_TOKEN;
-    if (
-      metricsAuthToken &&
-      req.headers.authorization !== `Bearer ${metricsAuthToken}`
-    ) {
-      res.status(401).send("Unauthorized");
-      return;
-    }
-
-    res.set("Content-Type", register.contentType);
-    res.send(await register.metrics());
-  });
+  app.use("/api/metrics", metricsRouter);
 
   app.use(errorHandler);
   return app;
