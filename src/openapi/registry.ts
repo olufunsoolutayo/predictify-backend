@@ -227,6 +227,30 @@ const PatchMarketRequest = z
   })
   .openapi("PatchMarketRequest");
 
+const FeaturedMarket = z
+  .object({
+    id: z.string(),
+    question: z.string(),
+    status: z.string(),
+    resolutionOutcome: z.string().nullable().optional(),
+    resolutionTime: z.string().datetime(),
+    winningOutcome: z.string().nullable().optional(),
+    metadata: z.any().nullable().optional(),
+    featuredAt: z.string().datetime().nullable(),
+    featuredBy: z.string().nullable(),
+  })
+  .openapi("FeaturedMarket");
+
+const FeatureMarketResponse = z
+  .object({
+    marketId: z.string(),
+    featured: z.boolean(),
+    featuredAt: z.string().datetime().nullable(),
+    featuredBy: z.string().nullable(),
+    changed: z.boolean(),
+  })
+  .openapi("FeatureMarketResponse");
+
 registry.registerPath({
   method: "patch",
   path: "/api/markets/{id}",
@@ -316,6 +340,114 @@ registry.registerPath({
     },
     400: {
       description: "Bad request",
+      content: { "application/json": { schema: ErrorBody } },
+    },
+  },
+});
+
+// ── /api/markets/featured ────────────────────────────────────────────────────
+
+registry.registerPath({
+  method: "get",
+  path: "/api/markets/featured",
+  tags: ["Markets"],
+  summary: "List currently featured markets for the home page",
+  request: {
+    query: z.object({
+      limit: z.coerce.number().int().min(1).max(20).optional(),
+    }),
+  },
+  responses: {
+    200: {
+      description: "Featured markets ordered by most recently featured first",
+      content: {
+        "application/json": {
+          schema: z.object({ data: z.array(FeaturedMarket) }),
+        },
+      },
+    },
+    400: {
+      description: "Invalid query parameters",
+      content: { "application/json": { schema: ErrorBody } },
+    },
+  },
+});
+
+// ── /api/admin/markets/{id}/feature ──────────────────────────────────────────
+
+registry.registerPath({
+  method: "post",
+  path: "/api/admin/markets/{id}/feature",
+  tags: ["Admin"],
+  summary: "Feature a market on the home page (admin only, idempotent)",
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ id: z.string() }) },
+  responses: {
+    200: {
+      description: "Market featured (or already featured — `changed` indicates mutation)",
+      content: {
+        "application/json": {
+          schema: z.object({ data: FeatureMarketResponse }),
+        },
+      },
+    },
+    400: {
+      description: "Validation error or market is archived",
+      content: { "application/json": { schema: ValidationErrorBody } },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorBody } },
+    },
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ErrorBody } },
+    },
+    404: {
+      description: "Market not found",
+      content: { "application/json": { schema: ErrorBody } },
+    },
+    429: {
+      description: "Rate limit exceeded",
+      content: { "application/json": { schema: ErrorBody } },
+    },
+  },
+});
+
+registry.registerPath({
+  method: "delete",
+  path: "/api/admin/markets/{id}/feature",
+  tags: ["Admin"],
+  summary: "Unfeature a market from the home page (admin only, idempotent)",
+  security: [{ bearerAuth: [] }],
+  request: { params: z.object({ id: z.string() }) },
+  responses: {
+    200: {
+      description: "Market unfeatured (or already unfeatured — `changed` indicates mutation)",
+      content: {
+        "application/json": {
+          schema: z.object({ data: FeatureMarketResponse }),
+        },
+      },
+    },
+    400: {
+      description: "Validation error or market is archived",
+      content: { "application/json": { schema: ValidationErrorBody } },
+    },
+    401: {
+      description: "Unauthorized",
+      content: { "application/json": { schema: ErrorBody } },
+    },
+    403: {
+      description: "Forbidden",
+      content: { "application/json": { schema: ErrorBody } },
+    },
+    404: {
+      description: "Market not found",
+      content: { "application/json": { schema: ErrorBody } },
+    },
+    429: {
+      description: "Rate limit exceeded",
       content: { "application/json": { schema: ErrorBody } },
     },
   },

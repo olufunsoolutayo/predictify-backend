@@ -3,6 +3,7 @@ import { listMarkets, getMarketById, updateMarket, VersionConflictError } from "
 import { searchMarkets } from "../repositories/marketRepository";
 import { requireAdmin, AuthenticatedRequest } from "../middleware/auth";
 import { rateLimitAnon } from "../middleware/rateLimitAnon";
+import { listFeaturedMarkets } from "../services/marketFeatureService";
 import { z } from "zod";
 import { logger } from "../config/logger";
 
@@ -75,6 +76,28 @@ marketsRouter.get("/", async (req, res, next) => {
     }
     return res.json({ data: await listMarkets() });
   } catch (e) { return next(e); }
+});
+
+// Public: curated home-page list. Served ahead of `/:id` so the literal
+// path is matched first.
+marketsRouter.get("/featured", async (req, res, next) => {
+  try {
+    const rawLimit = req.query.limit;
+    let parsedLimit: number | undefined;
+    if (rawLimit !== undefined) {
+      const num = Number(rawLimit);
+      if (!Number.isFinite(num) || num < 1 || num > 20) {
+        return res.status(400).json({
+          error: { code: "invalid_query", message: "limit must be an integer between 1 and 20" },
+        });
+      }
+      parsedLimit = Math.floor(num);
+    }
+    const data = await listFeaturedMarkets(parsedLimit);
+    return res.json({ data });
+  } catch (e) {
+    return next(e);
+  }
 });
 
 marketsRouter.get("/:id", async (req, res, next) => {

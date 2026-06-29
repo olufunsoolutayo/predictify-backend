@@ -28,6 +28,8 @@ describe("OpenAPI spec", () => {
     expect(paths).toContain("/api/leaderboard");
     expect(paths).toContain("/api/leaderboard/user/{stellarAddress}");
     expect(paths).toContain("/api/admin/users/{address}");
+    expect(paths).toContain("/api/markets/featured");
+    expect(paths).toContain("/api/admin/markets/{id}/feature");
   });
 
   it("defines reusable component schemas", () => {
@@ -35,6 +37,18 @@ describe("OpenAPI spec", () => {
     expect(schemas["ErrorBody"]).toBeDefined();
     expect(schemas["Market"]).toBeDefined();
     expect(schemas["TokenPair"]).toBeDefined();
+    expect(schemas["FeaturedMarket"]).toBeDefined();
+    expect(schemas["FeatureMarketResponse"]).toBeDefined();
+  });
+
+  it("marks admin feature routes with bearerAuth", () => {
+    const paths = spec.paths ?? {};
+    const post = (paths["/api/admin/markets/{id}/feature"] as Record<string, unknown>)
+      ?.post as Record<string, unknown>;
+    const del = (paths["/api/admin/markets/{id}/feature"] as Record<string, unknown>)
+      ?.delete as Record<string, unknown>;
+    expect(post?.security).toEqual([{ bearerAuth: [] }]);
+    expect(del?.security).toEqual([{ bearerAuth: [] }]);
   });
 
   it("defines bearer security scheme", () => {
