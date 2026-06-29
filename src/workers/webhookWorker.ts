@@ -1,6 +1,6 @@
 import { Worker, Job } from "bullmq";
 import { eq } from "drizzle-orm";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { Db } from "../db";
 import { webhookDeliveries, webhookSubscriptions } from "../db/schema";
 import { attemptDelivery, getOverdueDeliveries } from "../services/webhookDispatcher";
 import { logger } from "../config/logger";
@@ -16,11 +16,11 @@ export interface WorkerOptions {
 }
 
 export class WebhookWorker {
-  private readonly db: NodePgDatabase;
+  private readonly db: Db;
   private readonly concurrency: number;
   private worker: Worker | null = null;
 
-  constructor(db: NodePgDatabase, opts: WorkerOptions = {}) {
+  constructor(db: Db, opts: WorkerOptions = {}) {
     this.db = db;
     this.concurrency = opts.concurrency ?? 10;
   }

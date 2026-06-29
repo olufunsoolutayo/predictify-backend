@@ -11,6 +11,7 @@ const schema = z.object({
   JWT_ISSUER: z.string().default("predictify"),
   JWT_AUDIENCE: z.string().default("predictify-app"),
   JWT_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+  WORKER_HEARTBEAT_SECONDS: z.coerce.number().int().positive().default(30),
   STELLAR_NETWORK: z.enum(["testnet", "mainnet"]).default("testnet"),
   SOROBAN_RPC_URL: z.string().url(),
   HORIZON_URL: z.string().url(),

@@ -11,6 +11,7 @@ This service indexes on-chain market state from the Predictify Soroban contract,
 - **Node.js 20** + **TypeScript**
 - **Express** for HTTP
 - **Drizzle ORM** + **PostgreSQL** for persistence
+- **BullMQ** + **Redis** for async job queues (webhook delivery, backup verification, reconciliation, market resolution)
 - **zod** for env + request validation
 - **pino** for structured logging
 - **JWT (jsonwebtoken)** for wallet-based session auth
@@ -45,6 +46,20 @@ npm run indexer:gap-scan
 ```
 
 Configure via `INDEXER_GAP_SCAN_INTERVAL_MS`, `INDEXER_REWIND_LEDGERS`, and `INDEXER_BACKFILL_CHUNK_SIZE` in `.env`.
+
+## Job Queue (BullMQ + Redis)
+
+Slow and IO-bound jobs (webhook delivery, backup verification, market resolution, reconciliation) run in
+BullMQ workers backed by Redis. See **[docs/job-queue.md](docs/job-queue.md)** for the full design,
+enqueue patterns, environment variables, and testing guide.
+
+Quick start:
+
+```bash
+docker run -p 6379:6379 redis:7-alpine   # local Redis
+# Set REDIS_URL=redis://localhost:6379 in .env
+npm run dev
+```
 
 ## Layout
 
