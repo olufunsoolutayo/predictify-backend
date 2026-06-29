@@ -1,6 +1,6 @@
 import { db, getDb } from "../db/client";
-import { markets, marketAuditLog } from "../db/schema";
-import { asc, eq } from "drizzle-orm";
+import { markets, marketAuditLog, predictions } from "../db/schema";
+import { asc, eq, and, notInArray, desc, sql, inArray } from "drizzle-orm";
 import { emitMarketEvent, LogEvent } from "../logging/events";
 
 export interface Market {
@@ -74,6 +74,76 @@ export async function getMarketById(id: string): Promise<any | null> {
   } catch (e) {}
   const result = await getDb().select().from(markets).where(eq(markets.id, id)).limit(1);
   return result[0] || null;
+}
+
+export async function getRecommendedMarkets(userId: string): Promise<any[]> {
+  const userPredictions = await getDb()
+    .select({ marketId: predictions.marketId })
+    .from(predictions)
+    .where(eq(predictions.userId, userId));
+
+  const historyIds = userPredictions.map((p: { marketId: string }) => p.marketId);
+
+  let recommendedMarkets: any[] = [];
+
+  if (historyIds.length > 0) {
+    const historyMarkets = await getDb()
+      .select({ question: markets.question })
+      .from(markets)
+      .where(inArray(markets.id, historyIds));
+
+    const keywords = historyMarkets
+      .flatMap((m: { question: string }) => m.question.toLowerCase().split(/\W+/))
+      .filter((w: string) => w.length > 3)
+      .slice(0, 10);
+
+    if (keywords.length > 0) {
+      const conditions = keywords.map((k: string) => sql`question ILIKE ${"%" + k + "%"}`);
+      recommendedMarkets = await getDb()
+        .select({
+          id: markets.id,
+          question: markets.question,
+          status: markets.status,
+          resolutionTime: markets.resolutionTime,
+        })
+        .from(markets)
+        .where(
+          and(
+            eq(markets.archived, false),
+            eq(markets.status, "active"),
+            notInArray(markets.id, historyIds),
+            sql`(${sql.join(conditions, sql` OR `)})`
+          )
+        )
+        .orderBy(desc(markets.resolutionTime))
+        .limit(10);
+    }
+  }
+
+  if (recommendedMarkets.length === 0) {
+    recommendedMarkets = await getDb()
+      .select({
+        id: markets.id,
+        question: markets.question,
+        status: markets.status,
+        resolutionTime: markets.resolutionTime,
+      })
+      .from(markets)
+      .where(
+        and(
+          eq(markets.archived, false),
+          eq(markets.status, "active"),
+          historyIds.length > 0 ? notInArray(markets.id, historyIds) : sql`TRUE`
+        )
+      )
+      .orderBy(desc(markets.resolutionTime))
+      .limit(10);
+  }
+
+  return recommendedMarkets.map((r: any) => ({
+    ...r,
+    resolutionTime: r.resolutionTime instanceof Date ? r.resolutionTime.toISOString() : r.resolutionTime,
+  }));
 }
 
 export async function updateMarket(

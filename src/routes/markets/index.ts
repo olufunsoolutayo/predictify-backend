@@ -1,14 +1,16 @@
 import { Router } from "express";
-import { listMarkets, getMarketById, updateMarket, VersionConflictError } from "../services/marketService";
-import { searchMarkets } from "../repositories/marketRepository";
-import { requireAdmin, AuthenticatedRequest } from "../middleware/auth";
-import { rateLimitAnon } from "../middleware/rateLimitAnon";
+import { listMarkets, getMarketById, updateMarket, VersionConflictError } from "../../services/marketService";
+import { searchMarkets } from "../../repositories/marketRepository";
+import { requireAdmin, AuthenticatedRequest } from "../../middleware/auth";
+import { rateLimitAnon } from "../../middleware/rateLimitAnon";
 import { z } from "zod";
-import { logger } from "../config/logger";
+import { logger } from "../../config/logger";
+import { recommendationsRouter } from "./recommendations";
 
 export const marketsRouter = Router();
 
 marketsRouter.use(rateLimitAnon);
+marketsRouter.use("/recommendations", recommendationsRouter);
 
 const patchMarketSchema = z.object({
   question: z.string().optional(),
