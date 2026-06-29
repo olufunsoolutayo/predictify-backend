@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAdmin } from "../middleware/requireAdmin";
+import { requireScope } from "../middleware/scopeAuth";
 import type { WebhookDispatcher } from "../services/webhookDispatcher";
 import type { DlqRow, WebhookStore } from "../services/webhookStore";
 
@@ -43,6 +44,7 @@ const UUID_RE =
 export function createAdminWebhooksRouter(deps: AdminWebhookDeps): Router {
   const router = Router();
   router.use(requireAdmin);
+  router.use(requireScope("admin"));
 
   // GET /api/admin/webhooks/dlq?cursor=<opaque>&limit=<n>
   router.get("/dlq", async (req, res, next) => {

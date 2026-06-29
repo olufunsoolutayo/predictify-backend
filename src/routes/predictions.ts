@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middleware/requireAuth";
+import { requireScope } from "../middleware/scopeAuth";
 import { getPredictionExplanation } from "../services/predictionExplainService";
 
 export const predictionsRouter = Router();
@@ -11,7 +12,7 @@ predictionsRouter.use(requireAuth);
  * GET /api/predictions
  * Returns predictions belonging to the authenticated user.
  */
-predictionsRouter.get("/", (req, res) => {
+predictionsRouter.get("/", requireScope("read"), (req, res) => {
   res.json({ data: [], user: (req as any).user });
 });
 
@@ -20,7 +21,7 @@ predictionsRouter.get("/", (req, res) => {
  * Returns the resolution computation trail for a prediction (educational endpoint).
  * Shows oracle inputs, market resolution, and payout calculation.
  */
-predictionsRouter.get("/:id/explain", async (req, res, next) => {
+predictionsRouter.get("/:id/explain", requireScope("read"), async (req, res, next) => {
   try {
     const { id } = req.params;
     const explanation = await getPredictionExplanation(id);

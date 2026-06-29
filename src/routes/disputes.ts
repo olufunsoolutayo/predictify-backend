@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAuth } from "../middleware/requireAuth";
+import { requireScope } from "../middleware/scopeAuth";
 import { openDispute, DisputeError } from "../services/disputeService";
 import { validateHttpsUrl, validateSsrf } from "../utils/url";
 import { logger } from "../config/logger";
@@ -12,7 +13,7 @@ const openDisputeSchema = z.object({
   evidenceUri: z.string().optional().nullable(),
 }).strict();
 
-disputesRouter.post("/", requireAuth, async (req, res, next) => {
+disputesRouter.post("/", requireAuth, requireScope("write"), async (req, res, next) => {
   try {
     // mergeParams: true means :id from the parent router is available here
     const marketId = (req.params as Record<string, string>).id;

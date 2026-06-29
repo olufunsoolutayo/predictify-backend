@@ -6,6 +6,7 @@
  */
 
 import "express";
+import type { ApiScope } from "../middleware/scopeAuth";
 
 declare module "express" {
   interface Request {
@@ -24,5 +25,12 @@ declare module "express" {
       /** Stellar G-address that owns this account */
       stellarAddress: string;
     };
+
+    /**
+     * Populated by `requireScope` after the JWT's `scopes` claim is verified.
+     * Contains the validated scopes granted to this API key.
+     * Available to downstream handlers for fine-grained access decisions.
+     */
+    apiKeyScopes?: ApiScope[];
   }
 }

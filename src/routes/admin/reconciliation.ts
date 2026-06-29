@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requireAdmin } from "../../middleware/requireAdmin";
+import { requireScope } from "../../middleware/scopeAuth";
 import { reconcileMarket } from "../../services/reconciliationService";
 import { REQUEST_ID_HEADER } from "../../lib/http";
 
@@ -20,6 +21,7 @@ export function createAdminReconciliationRouter(): Router {
   const router = Router();
 
   router.use(requireAdmin);
+  router.use(requireScope("admin"));
 
   router.get("/markets/:id", async (req, res, next) => {
     try {

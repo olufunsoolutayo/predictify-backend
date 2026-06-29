@@ -9,6 +9,7 @@ import { z } from "zod";
 import { logger } from "../config/logger";
 import { getRequestId } from "../lib/requestContext";
 import { requireAuth } from "../middleware/requireAuth";
+import { requireScope } from "../middleware/scopeAuth";
 import {
   socialRepository,
   type SocialRepository,
@@ -74,6 +75,7 @@ export function createSocialRouter({
   router.post(
     "/:addr/follow",
     authMiddleware,
+    requireScope("write"),
     async (req: Request, res: Response, next: NextFunction) => {
       const parsed = stellarAddressSchema.safeParse(req.params.addr);
       if (!parsed.success) {
@@ -112,6 +114,7 @@ export function createSocialRouter({
   router.delete(
     "/:addr/follow",
     authMiddleware,
+    requireScope("write"),
     async (req: Request, res: Response, next: NextFunction) => {
       const parsed = stellarAddressSchema.safeParse(req.params.addr);
       if (!parsed.success) {

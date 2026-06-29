@@ -3,6 +3,7 @@ import { listMarkets, getMarketById, updateMarket, VersionConflictError } from "
 import { searchMarkets } from "../repositories/marketRepository";
 import { requireAdmin, AuthenticatedRequest } from "../middleware/auth";
 import { rateLimitAnon } from "../middleware/rateLimitAnon";
+import { requireScope } from "../middleware/scopeAuth";
 import { z } from "zod";
 import { logger } from "../config/logger";
 
@@ -16,7 +17,7 @@ const patchMarketSchema = z.object({
   expectedVersion: z.number().int().nonnegative(),
 }).strict();
 
-marketsRouter.get("/search", async (req, res, next) => {
+marketsRouter.get("/search", requireScope("read"), async (req, res, next) => {
   const reqId = String((req as any).id ?? "anon");
   try {
     const q = req.query.q as string;
@@ -68,7 +69,7 @@ marketsRouter.get("/search", async (req, res, next) => {
   }
 });
 
-marketsRouter.get("/", async (req, res, next) => {
+marketsRouter.get("/", requireScope("read"), async (req, res, next) => {
   try {
     if (req.query.limit !== undefined && (isNaN(Number(req.query.limit)) || Number(req.query.limit) > 100)) {
       return res.status(400).json({ error: { code: "invalid_query" } });
@@ -77,7 +78,7 @@ marketsRouter.get("/", async (req, res, next) => {
   } catch (e) { return next(e); }
 });
 
-marketsRouter.get("/:id", async (req, res, next) => {
+marketsRouter.get("/:id", requireScope("read"), async (req, res, next) => {
   try {
     const market = await getMarketById(req.params.id as string);
     if (!market) {
@@ -87,7 +88,7 @@ marketsRouter.get("/:id", async (req, res, next) => {
   } catch (e) { return next(e); }
 });
 
-marketsRouter.patch("/:id", requireAdmin, async (req: AuthenticatedRequest, res, next) => {
+marketsRouter.patch("/:id", requireAdmin, requireScope("write"), async (req: AuthenticatedRequest, res, next) => {
   try {
     const parsed = patchMarketSchema.safeParse(req.body);
     if (!parsed.success) {

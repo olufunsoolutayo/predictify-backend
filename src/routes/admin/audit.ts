@@ -2,6 +2,7 @@ import { Router } from "express";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
 import { requireAdmin } from "../../middleware/requireAdmin";
+import { requireScope } from "../../middleware/scopeAuth";
 import { getAuditLogs } from "../../repositories/auditLogRepo";
 import { getRequestId } from "../../lib/requestContext";
 
@@ -50,6 +51,7 @@ export function createAdminAuditRouter(opts: AdminAuditRouterOptions = {}): Rout
 
   // ── Admin guard ─────────────────────────────────────────────────────────────
   router.use(requireAdmin);
+  router.use(requireScope("admin"));
 
   // ── GET / ───────────────────────────────────────────────────────────────────
   router.get("/", async (req, res, next) => {

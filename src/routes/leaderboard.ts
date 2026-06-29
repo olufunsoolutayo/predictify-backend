@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { getLeaderboard, getLeaderboardWithRefresh, getUserLeaderboardEntry } from "../services/leaderboardService";
 import { rateLimitAnon } from "../middleware/rateLimitAnon";
+import { requireScope } from "../middleware/scopeAuth";
 
 export const leaderboardRouter = Router();
 
@@ -15,7 +16,7 @@ const leaderboardQuerySchema = z.object({
 });
 
 // GET /api/leaderboard - Get leaderboard with optional refresh
-leaderboardRouter.get("/", async (req, res, next) => {
+leaderboardRouter.get("/", requireScope("read"), async (req, res, next) => {
   try {
     const { limit, offset, refresh } = leaderboardQuerySchema.parse(req.query);
     
@@ -38,7 +39,7 @@ leaderboardRouter.get("/", async (req, res, next) => {
 });
 
 // GET /api/leaderboard/user/:stellarAddress - Get specific user's leaderboard entry
-leaderboardRouter.get("/user/:stellarAddress", async (req, res, next) => {
+leaderboardRouter.get("/user/:stellarAddress", requireScope("read"), async (req, res, next) => {
   try {
     const entry = await getUserLeaderboardEntry(req.params.stellarAddress);
     if (!entry) {

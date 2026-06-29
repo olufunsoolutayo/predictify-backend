@@ -7,6 +7,7 @@ import {
 import { z } from "zod";
 import { logger } from "../config/logger";
 import { requireAuth } from "../middleware/requireAuth";
+import { requireScope } from "../middleware/scopeAuth";
 import {
   getNotificationPreferences,
   notificationCategories,
@@ -39,6 +40,7 @@ notificationsRouter.use(requireAuth);
 
 notificationsRouter.get(
   "/preferences",
+  requireScope("read"),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const userId = (req as Request & { user: { id: string } }).user.id;
@@ -66,6 +68,7 @@ notificationsRouter.get(
 
 notificationsRouter.patch(
   "/preferences",
+  requireScope("write"),
   async (req: Request, res: Response, next: NextFunction) => {
     const parsed = patchPreferencesBodySchema.safeParse(req.body);
     if (!parsed.success) {

@@ -2,6 +2,7 @@ import { Router, Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { getUserByAddress, getUserPredictions, getCurrentUserProfile, getUserProfile } from "../services/userService";
 import { requireAuthForbidden } from "../middleware/requireAuth";
+import { requireScope } from "../middleware/scopeAuth";
 import { AuthenticatedRequest } from "../middleware/auth";
 import { logger } from "../config/logger";
 import { getRequestId } from "../lib/requestContext";
@@ -10,7 +11,7 @@ export const usersRouter = Router();
 
 const stellarAddressSchema = z.string().regex(/^G[A-Z2-7]{55}$/, "Invalid Stellar address");
 
-usersRouter.get("/me", requireAuthForbidden, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+usersRouter.get("/me", requireAuthForbidden, requireScope("read"), async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.user!.id;
     const result = await getCurrentUserProfile(userId);
@@ -30,7 +31,7 @@ usersRouter.get("/me", requireAuthForbidden, async (req: AuthenticatedRequest, r
   }
 });
 
-usersRouter.get("/:address/predictions", async (req: Request, res: Response, next: NextFunction) => {
+usersRouter.get("/:address/predictions", requireScope("read"), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const address = req.params.address as string;
     const { status, cursor, limit = "20" } = req.query;
@@ -69,7 +70,7 @@ usersRouter.get("/:address/predictions", async (req: Request, res: Response, nex
   }
 });
 
-usersRouter.get("/:stellarAddress/profile", async (req: Request, res: Response, next: NextFunction) => {
+usersRouter.get("/:stellarAddress/profile", requireScope("read"), async (req: Request, res: Response, next: NextFunction) => {
   const reqId = getRequestId() ?? (typeof (req as { id?: unknown }).id === "string" ? (req as { id?: string }).id : undefined);
 
   const parseResult = stellarAddressSchema.safeParse(req.params.stellarAddress);
