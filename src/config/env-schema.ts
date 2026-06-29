@@ -36,6 +36,10 @@ export const envSchema = z.object({
   CAPTCHA_THRESHOLD: z.coerce.number().int().nonnegative().default(10),
   /** Sliding window length for captcha threshold tracking (ms) */
   CAPTCHA_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+
+  // ── Metrics ──────────────────────────────────────────────
+  /** Bearer token required to access /api/metrics. Empty string (default) means no auth. */
+  METRICS_AUTH_TOKEN: z.string().default(""),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -1,0 +1,47 @@
+# Metrics
+
+Predictify exposes Prometheus metrics at `GET /api/metrics`.
+
+## Auth
+
+If `METRICS_AUTH_TOKEN` is set, the endpoint requires a `Bearer` token:
+
+```
+Authorization: Bearer <token>
+```
+
+When the token is missing or invalid, the endpoint returns `401 Unauthorized` with a JSON error body.
+
+If `METRICS_AUTH_TOKEN` is empty (default), the endpoint is unprotected.
+
+## Metrics collected
+
+### Default Node.js metrics
+
+Collected by `prom-client`'s `collectDefaultMetrics`:
+
+- `process_cpu_user_seconds_total`
+- `process_cpu_system_seconds_total`
+- `process_resident_memory_bytes`
+- `node_heap_size_bytes`
+- `node_event_loop_lag_seconds`
+- and more
+
+### Custom metrics
+
+| Metric name | Type | Labels | Description |
+|---|---|---|---|
+| `http_request_duration_seconds` | Histogram | `route`, `status` | HTTP request duration in seconds, bucketed |
+| `indexer_polls_total` | Counter | — | Total indexer poll cycles completed |
+| `webhook_deliveries_total` | Counter | `status` | Webhook deliveries by outcome |
+| `auth_verifications_total` | Counter | `outcome` | Auth verification attempts by result |
+
+## Content type
+
+The response uses `Content-Type: text/plain; charset=utf-8; version=0.0.4` (Prometheus exposition format).
+
+## Configuration
+
+| Variable | Default | Description |
+|---|---|---|
+| `METRICS_AUTH_TOKEN` | `""` | Bearer token required to access `/api/metrics`. Empty means no auth |
