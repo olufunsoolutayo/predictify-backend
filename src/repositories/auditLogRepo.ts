@@ -79,3 +79,45 @@ export async function getAuditLogs(filters: AuditLogFilters): Promise<Page<Audit
         : null,
   };
 }
+
+
+
+
+/**
+ * Stream audit logs matching the given filter criteria using an async generator.
+ *
+ * Fetches all matching records from the database and yields them one by one.
+ * For very large datasets, consider implementing cursor-based batching.
+ *
+ * @param filters - Filter criteria (without pagination fields)
+ * @returns An async generator yielding AuditLogItem objects
+ */
+export async function* getAuditLogsStream(
+  filters: Omit<AuditLogFilters, 'cursor' | 'limit'>,
+): AsyncGenerator<AuditLogItem, void, undefined> {
+  const conditions = [];
+  if (filters.action) {
+    conditions.push(eq(auditLogs.action, filters.action));
+  }
+  if (filters.actor) {
+    conditions.push(eq(auditLogs.walletAddress, filters.actor));
+  }
+  if (filters.startDate) {
+    conditions.push(gte(auditLogs.createdAt, filters.startDate));
+  }
+  if (filters.endDate) {
+    conditions.push(lte(auditLogs.createdAt, filters.endDate));
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+  const rows = await db
+    .select()
+    .from(auditLogs)
+    .where(whereClause)
+    .orderBy(desc(auditLogs.createdAt), desc(auditLogs.id));
+
+  for (const row of rows) {
+    yield row as AuditLogItem;
+  }
+}
