@@ -1,6 +1,6 @@
 import { db, getDb } from "../db/client";
 import { markets, marketAuditLog } from "../db/schema";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import { emitMarketEvent, LogEvent } from "../logging/events";
 
 export interface Market {
@@ -50,6 +50,50 @@ export async function listMarkets(options: { limit?: number; offset?: number } =
   }
   const result = await getDb().select().from(markets);
   return Array.isArray(result) ? result : [];
+}
+
+/** Statuses that represent a market that has not yet opened for predictions. */
+export const UPCOMING_MARKET_STATUSES = ["upcoming", "pending", "scheduled"] as const;
+
+/**
+ * Lists upcoming markets — markets that are queued to be created/opened from
+ * oracle events but are not yet active. A market is "upcoming" when its status
+ * is one of UPCOMING_MARKET_STATUSES and its resolution time is still in the
+ * future. Results are ordered by soonest resolution time first.
+ */
+export async function listUpcomingMarkets(
+  options: { limit?: number; now?: Date } = {},
+): Promise<any[]> {
+  const limit = Math.min(Math.max(options.limit ?? 50, 1), 100);
+  const now = options.now ?? new Date();
+
+  const rows = await getDb()
+    .select({
+      id: markets.id,
+      question: markets.question,
+      status: markets.status,
+      resolutionTime: markets.resolutionTime,
+    })
+    .from(markets)
+    .where(
+      and(
+        eq(markets.archived, false),
+        inArray(markets.status, UPCOMING_MARKET_STATUSES as unknown as string[]),
+        gt(markets.resolutionTime, now),
+      ),
+    )
+    .orderBy(asc(markets.resolutionTime), asc(markets.id))
+    .limit(limit);
+
+  if (!Array.isArray(rows)) {
+    return [];
+  }
+
+  return rows.map((r: any) => ({
+    ...r,
+    resolutionTime:
+      r.resolutionTime instanceof Date ? r.resolutionTime.toISOString() : r.resolutionTime,
+  }));
 }
 
 export async function getMarketById(id: string): Promise<any | null> {

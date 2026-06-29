@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { listMarkets, getMarketById, updateMarket, VersionConflictError } from "../services/marketService";
+import { listMarkets, listUpcomingMarkets, getMarketById, updateMarket, VersionConflictError } from "../services/marketService";
 import { searchMarkets } from "../repositories/marketRepository";
 import { requireAdmin, AuthenticatedRequest } from "../middleware/auth";
 import { rateLimitAnon } from "../middleware/rateLimitAnon";
@@ -75,6 +75,27 @@ marketsRouter.get("/", async (req, res, next) => {
     }
     return res.json({ data: await listMarkets() });
   } catch (e) { return next(e); }
+});
+
+marketsRouter.get("/upcoming", async (req, res, next) => {
+  const reqId = String((req as any).id ?? "anon");
+  try {
+    if (
+      req.query.limit !== undefined &&
+      (isNaN(Number(req.query.limit)) || Number(req.query.limit) < 1 || Number(req.query.limit) > 100)
+    ) {
+      return res.status(400).json({
+        error: { code: "validation_error", message: "limit must be between 1 and 100", requestId: reqId },
+      });
+    }
+    const limit = req.query.limit !== undefined ? Number(req.query.limit) : 50;
+    const data = await listUpcomingMarkets({ limit });
+    logger.info({ reqId, correlationId: reqId, count: data.length }, "markets_upcoming_listed");
+    return res.json({ data });
+  } catch (err) {
+    logger.error({ reqId, correlationId: reqId, err }, "markets_upcoming_failed");
+    return next(err);
+  }
 });
 
 marketsRouter.get("/:id", async (req, res, next) => {
