@@ -285,3 +285,16 @@ export const auditLogs = pgTable(
     auditLogsCreatedAtIdx: index("audit_logs_created_at_idx").on(t.createdAt),
   }),
 );
+
+// ---------------------------------------------------------------------------
+// Feature Flags
+// ---------------------------------------------------------------------------
+export const featureFlags = pgTable("feature_flags", {
+  id: text("id").primaryKey(),
+  enabled: boolean("enabled").notNull().default(false),
+  variant: text("variant"),
+  description: text("description"),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
