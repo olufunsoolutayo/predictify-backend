@@ -10,6 +10,7 @@ import { logger } from "../config/logger";
 export const marketsRouter = Router();
 
 marketsRouter.use(rateLimitAnon);
+marketsRouter.use("/trending", trendingRouter);
 
 const patchMarketSchema = z.object({
   question: z.string().optional(),
