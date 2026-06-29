@@ -413,6 +413,52 @@ const Prediction = z
   })
   .openapi("Prediction");
 
+
+const PortfolioMarket = z.object({
+  marketId: z.string(),
+  question: z.string(),
+  status: z.string(),
+  resolutionTime: z.string().datetime(),
+  outcome: z.string(),
+  predictionCount: z.number().int().nonnegative(),
+  totalStaked: z.string(),
+  claimableAmount: z.string(),
+  latestPredictionAt: z.string().datetime(),
+}).openapi("PortfolioMarket");
+
+const UserPortfolio = z.object({
+  address: z.string(),
+  totals: z.object({
+    marketCount: z.number().int().nonnegative(),
+    predictionCount: z.number().int().nonnegative(),
+    totalStaked: z.string(),
+    claimableAmount: z.string(),
+    won: z.number().int().nonnegative(),
+    lost: z.number().int().nonnegative(),
+    pending: z.number().int().nonnegative(),
+    confirmed: z.number().int().nonnegative(),
+    claimed: z.number().int().nonnegative(),
+  }),
+  markets: z.array(PortfolioMarket),
+  cachedAt: z.string().datetime(),
+}).openapi("UserPortfolio");
+
+registry.registerPath({
+  method: "get",
+  path: "/api/users/{addr}/portfolio",
+  tags: ["Users"],
+  summary: "Aggregate a user portfolio across all markets",
+  request: { params: z.object({ addr: z.string() }) },
+  responses: {
+    200: {
+      description: "Aggregated user portfolio, cached briefly for repeated reads",
+      content: { "application/json": { schema: z.object({ data: UserPortfolio }) } },
+    },
+    400: { description: "Invalid address", content: { "application/json": { schema: ErrorBody } } },
+    404: { description: "User not found", content: { "application/json": { schema: ErrorBody } } },
+  },
+});
+
 registry.registerPath({
   method: "get",
   path: "/api/users/{address}/predictions",
