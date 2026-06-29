@@ -20,6 +20,7 @@ describe("OpenAPI spec", () => {
     expect(paths).toContain("/api/auth/verify");
     expect(paths).toContain("/api/auth/refresh");
     expect(paths).toContain("/api/markets");
+    expect(paths).toContain("/api/markets/recommendations");
     expect(paths).toContain("/api/notifications/preferences");
     expect(paths).toContain("/api/markets/{id}");
     expect(paths).toContain("/api/markets/{id}/disputes");
@@ -49,7 +50,10 @@ describe("OpenAPI spec", () => {
     const paths = spec.paths ?? {};
     const patchMarket = (paths["/api/markets/{id}"] as Record<string, unknown>)
       ?.patch as Record<string, unknown>;
+    const marketRecommendations = (paths["/api/markets/recommendations"] as Record<string, unknown>)
+      ?.get as Record<string, unknown>;
     expect(patchMarket?.security).toEqual([{ bearerAuth: [] }]);
+    expect(marketRecommendations?.security).toEqual([{ bearerAuth: [] }]);
   });
 });
 
