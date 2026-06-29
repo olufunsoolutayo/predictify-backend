@@ -6,6 +6,7 @@ process.env.JWT_SECRET = "test-secret-with-at-least-32-characters";
 process.env.SOROBAN_RPC_URL = "https://soroban-testnet.stellar.org";
 process.env.HORIZON_URL = "https://horizon-testnet.stellar.org";
 process.env.PREDICTIFY_CONTRACT_ID = "CABCDEF1234567890";
+process.env.REDIS_URL = process.env.REDIS_URL || "redis://localhost:6379";
 
 /** @type {import('jest').Config} */
 module.exports = {
@@ -13,8 +14,26 @@ module.exports = {
   testEnvironment: "node",
   setupFiles: ["<rootDir>/tests/setup.ts"],
   testMatch: ["**/tests/**/*.test.ts"],
-  setupFiles: ["./tests/setup.ts"],
-  collectCoverageFrom: ["src/**/*.ts"],
+  collectCoverageFrom: [
+    "src/**/*.ts",
+    "!src/**/*.d.ts",
+    "!src/index.ts",
+  ],
   coverageDirectory: "coverage",
-  setupFiles: ["./tests/setup.ts"],
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 90,
+      statements: 90,
+    },
+  },
+  // Separate E2E tests from unit tests
+  testPathIgnorePatterns: [
+    "/node_modules/",
+    "/dist/",
+  ],
+  // Increase timeout for E2E tests
+  testTimeout: 10000, // 10 seconds default, E2E tests override this
+  verbose: true,
 };
