@@ -1,3 +1,5 @@
+  
+/* eslint-disable @typescript-eslint/no-namespace */ 
 /**
  * requireAdmin — Express middleware that enforces admin-only access.
  *

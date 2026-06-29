@@ -37,6 +37,14 @@ Once running:
 - **OpenAPI JSON** → http://localhost:3000/openapi.json *(always available)*
 - **Audit export** → `GET /api/admin/audit/export` streams admin audit logs as `application/x-ndjson`
 
+
+## Request body size limits
+
+- Default JSON request body limit: `256kb`.
+- Route-level overrides are applied in middleware using `createBodyLimitMiddleware(...)`.
+- Webhook routes may opt into a larger limit of `1mb`.
+- Requests exceeding the configured limit return HTTP `413` with the standard error envelope, including correlation and request IDs.
+
 ## Indexer gap scan
 
 The gap-scan worker detects missing ledger ranges in `indexer_events` between the durable cursor and chain tip, emits `indexer_gap_detected_total{from,to}`, and self-heals via `backfillRange`:
