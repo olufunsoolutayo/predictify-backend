@@ -10,6 +10,12 @@ const schema = z.object({
   JWT_ISSUER: z.string().default("predictify"),
   JWT_AUDIENCE: z.string().default("predictify-app"),
   JWT_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+  // Additional signing/verification keys for rotation, as comma-separated
+  // "kid:secret" pairs (each secret >= 32 chars). Parsed by src/utils/keyRing.ts.
+  // JWT_SECRET above is always loaded too, under the reserved kid "default".
+  JWT_KEYS: z.string().optional(),
+  // kid used to sign *new* tokens. Defaults to "default" (i.e. JWT_SECRET).
+  JWT_ACTIVE_KID: z.string().optional(),
   STELLAR_NETWORK: z.enum(["testnet", "mainnet"]).default("testnet"),
   SOROBAN_RPC_URL: z.string().url(),
   HORIZON_URL: z.string().url(),

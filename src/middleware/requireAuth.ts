@@ -15,7 +15,10 @@
  *
  * JWT contract
  * ------------
- *   Tokens must be signed with HS256 (HMAC-SHA256) using `env.JWT_SECRET`.
+ *   Tokens must be signed with HS256 (HMAC-SHA256) using a key from the
+ *   key ring (src/utils/keyRing.ts), selected by the `kid` header claim.
+ *   This allows signing keys to rotate without invalidating outstanding
+ *   tokens — see docs/jwt-rotation.md.
  *   Required claims:
  *     - iss  === env.JWT_ISSUER    (e.g. "predictify")
  *     - aud  === env.JWT_AUDIENCE  (e.g. "predictify-app")
@@ -30,13 +33,14 @@
  */
 
 import type { NextFunction, Request, RequestHandler, Response } from "express";
-import jwt, { type JwtPayload } from "jsonwebtoken";
+import type { JwtPayload } from "jsonwebtoken";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { eq } from "drizzle-orm";
 import { env } from "../config/env";
 import { logger } from "../config/logger";
 import { users } from "../db/schema";
+import { verifyAccessToken } from "../services/jwtService";
 
 // ---------------------------------------------------------------------------
 // Shared DB pool (module-level singleton — one pool for the whole process).
@@ -88,11 +92,7 @@ function extractBearerToken(req: Request): string {
 function verifyToken(token: string): AuthPayload {
   let payload: JwtPayload | string;
   try {
-    payload = jwt.verify(token, env.JWT_SECRET, {
-      algorithms: ["HS256"],
-      issuer: env.JWT_ISSUER,
-      audience: env.JWT_AUDIENCE,
-    });
+    payload = verifyAccessToken(token);
   } catch (err) {
     // Map jsonwebtoken error names to a single stable code so callers don't
     // need to inspect the message string.

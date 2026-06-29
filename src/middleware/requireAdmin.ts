@@ -2,17 +2,17 @@
  * requireAdmin — Express middleware that enforces admin-only access.
  *
  * Expects:  Authorization: Bearer <jwt>
- * The JWT must be signed with JWT_SECRET and carry { role: "admin" }.
- * The verified subject (Stellar address) is attached as req.adminAddress
- * for downstream use in audit logging and rate-limit keying.
+ * The JWT must be signed with a key from the key ring (src/utils/keyRing.ts)
+ * and carry { role: "admin" }. The verified subject (Stellar address) is
+ * attached as req.adminAddress for downstream use in audit logging and
+ * rate-limit keying.
  *
  * Returns 403 for any of: missing header, invalid signature, wrong role.
  * Never reveals why verification failed (prevents enumeration).
  */
 
 import type { NextFunction, Request, Response } from "express";
-import jwt from "jsonwebtoken";
-import { env } from "../config/env";
+import { verifyAccessToken } from "../services/jwtService";
 
 // Augment Express Request so downstream handlers can read the admin identity
 // without casting.
@@ -39,10 +39,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction): v
   const token = auth.slice(7);
 
   try {
-    const payload = jwt.verify(token, env.JWT_SECRET, {
-      issuer: env.JWT_ISSUER,
-      audience: env.JWT_AUDIENCE,
-    }) as AdminTokenPayload;
+    const payload = verifyAccessToken(token) as AdminTokenPayload;
 
     if (payload.role !== "admin" || !payload.sub) {
       res.status(403).json({ error: { code: "forbidden" } });

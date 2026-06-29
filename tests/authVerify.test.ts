@@ -5,7 +5,7 @@ import { createApp } from "../src/index";
 
 process.env.NODE_ENV = "test";
 process.env.PORT = "3001";
-process.env.LOG_LEVEL = "silent";
+process.env.LOG_LEVEL = "fatal";
 process.env.DATABASE_URL = "postgres://localhost/test";
 process.env.JWT_SECRET = "a-very-long-test-secret-at-least-32-bytes!!";
 process.env.JWT_ISSUER = "predictify";

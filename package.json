@@ -20,7 +20,8 @@
     "indexer:gap-scan": "ts-node-dev --transpile-only src/workers/indexerGapScan.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:check-drift": "ts-node scripts/check-drizzle-drift.ts"
+    "db:check-drift": "ts-node scripts/check-drizzle-drift.ts",
+    "jwt:rotate": "ts-node --transpile-only scripts/rotate-jwt-key.ts"
   },
   "dependencies": {
     "@asteasolutions/zod-to-openapi": "7.3.4",
