@@ -21,6 +21,8 @@ const schema = z.object({
   INDEXER_REWIND_LEDGERS: z.coerce.number().int().nonnegative().default(100),
   INDEXER_BACKFILL_CHUNK_SIZE: z.coerce.number().int().positive().default(500),
   INDEXER_GAP_SCAN_INTERVAL_MS: z.coerce.number().int().positive().default(60000),
+  // Lag (in ledgers) above which the health probe emits an alert log  (default: 200)
+  INDEXER_LAG_ALERT_THRESHOLD: z.coerce.number().int().positive().default(200),
   RECONCILIATION_ENABLED: z.coerce.boolean().default(false),
   RECONCILIATION_SCHEDULE: z.string().default("0 2 * * *"),
   ADMIN_ALLOWLIST: z.string().default("").transform((val) => val.split(",").map((s) => s.trim()).filter(Boolean)),

@@ -150,6 +150,27 @@ if (require.main === module) {
         logger.info({ port: env.PORT, env: env.NODE_ENV }, "predictify-backend listening");
         logger.info(`Swagger UI available at http://localhost:${env.PORT}/docs`);
       });
+
+      process.on("SIGTERM", async () => {
+        logger.info("SIGTERM received, shutting down");
+        const forceExit = setTimeout(() => {
+          logger.warn("Forced exit after shutdown timeout");
+          process.exit(1);
+        }, 5000).unref();
+
+        stopIndexerHealthProbe(probeHandle);
+        stopScheduler();
+        await closeDb();
+        clearTimeout(forceExit);
+        process.exit(0);
+      });
+
+      process.on("SIGINT", () => {
+        logger.info("SIGINT received, shutting down gracefully");
+        stopIndexerHealthProbe(probeHandle);
+        stopScheduler();
+        process.exit(0);
+      });
     })
     .catch((err) => {
       logger.fatal({ err }, "Failed to start server");
