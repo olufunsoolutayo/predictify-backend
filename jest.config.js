@@ -13,6 +13,7 @@ module.exports = {
   testEnvironment: "node",
   setupFiles: ["<rootDir>/tests/setup.ts"],
   testMatch: ["**/tests/**/*.test.ts"],
+  testPathIgnorePatterns: ["/node_modules/", "/tests/integration/"],
   setupFiles: ["./tests/setup.ts"],
   collectCoverageFrom: ["src/**/*.ts"],
   coverageDirectory: "coverage",
