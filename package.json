@@ -15,7 +15,7 @@
     "indexer": "node dist/workers/indexer.js",
     "indexer:dev": "ts-node-dev --respawn --transpile-only src/workers/indexer.ts",
     "lint": "eslint \"src/**/*.ts\"",
-    "test": "jest",
+    "test": "jest tests/bodyLimit.test.ts"
     "test:coverage": "jest --coverage",
     "indexer:gap-scan": "ts-node-dev --transpile-only src/workers/indexerGapScan.ts",
     "db:generate": "drizzle-kit generate",
