@@ -32,6 +32,9 @@ const schema = z.object({
   // ── Captcha gate ──────────────────────────────────────────
   CAPTCHA_THRESHOLD: z.coerce.number().int().nonnegative().default(10),
   CAPTCHA_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
+  // ── Settle confirmer ──────────────────────────────────────────
+  SETTLE_CONFIRMER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5_000),
+  SETTLE_CONFIRMER_CONFIRMATION_LEDGERS: z.coerce.number().int().positive().default(2),
 });
 
 export const env = schema.parse(process.env);

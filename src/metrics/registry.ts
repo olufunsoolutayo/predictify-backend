@@ -31,3 +31,21 @@ export const authVerificationsTotal = new Counter({
   labelNames: ["outcome"] as const,
   registers: [register],
 });
+
+export const settleConfirmerPollsTotal = new Counter({
+  name: "settle_confirmer_polls_total",
+  help: "Total number of settle-confirmer poll cycles completed",
+  registers: [register],
+});
+
+export const settleConfirmerSettledTotal = new Counter({
+  name: "settle_confirmer_settled_total",
+  help: "Total number of claims marked as settled by the settle-confirmer",
+  registers: [register],
+});
+
+export const settleConfirmerFailedTotal = new Counter({
+  name: "settle_confirmer_failed_total",
+  help: "Total number of claims permanently marked as failed by the settle-confirmer",
+  registers: [register],
+});

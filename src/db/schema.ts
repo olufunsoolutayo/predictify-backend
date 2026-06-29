@@ -213,6 +213,12 @@ export const claims = pgTable("claims", {
     .references(() => markets.id),
   amount: text("amount").notNull(),
   status: text("status").notNull().default("pending"),
+  settlementTx: text("settlement_tx"),
+  settleAttempts: integer("settle_attempts").notNull().default(0),
+  nextSettleAttemptAt: timestamp("next_settle_attempt_at", {
+    withTimezone: true,
+  }),
+  settledAt: timestamp("settled_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
