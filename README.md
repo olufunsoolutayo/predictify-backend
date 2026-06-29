@@ -33,7 +33,44 @@ npm run dev                  # predev hook re-runs check-env automatically
 Once running:
 
 - **Swagger UI** → http://localhost:3000/docs *(non-production only; set `ENABLE_DOCS=true` to enable in production)*
-- **OpenAPI JSON** → http://localhost:3000/openapi.json *(always available)*
+- **OpenAPI JSON** → http://localhost:3000/docs/openapi.json *(always available when docs are enabled)*
+
+## OpenAPI Specification
+
+The project uses `@asteasolutions/zod-to-openapi` to generate an OpenAPI 3.1 specification from Zod schemas. The spec lives in `src/openapi/`.
+
+### Regenerating `openapi.yaml`
+
+```bash
+npm run openapi:generate    # outputs openapi.yaml at the project root
+```
+
+This runs automatically before `npm run build` via the `prebuild` hook.
+
+### Validating the spec against routes
+
+```bash
+npm run openapi:check
+```
+
+The script compares every documented endpoint against the routes registered in `scripts/check-openapi.ts`. It exits with code 1 on:
+- Missing documented routes
+- Extra undocumented routes
+- Structural spec errors
+
+### Accessing Swagger UI
+
+Start the dev server and visit [http://localhost:3000/docs](http://localhost:3000/docs). If Swagger UI is not visible, ensure `NODE_ENV` is not `production` or set `ENABLE_DOCS=true`.
+
+### Maintenance
+
+When adding or removing endpoints in `src/index.ts`:
+
+1. Update the route definition in `src/openapi/registry.ts`
+2. Update the expected route list in `scripts/check-openapi.ts`
+3. Run `npm run openapi:generate` to refresh `openapi.yaml`
+4. Run `npm run openapi:check` to verify
+5. Update any affected tests in `tests/openapi.test.ts`
 
 ## Indexer gap scan
 
