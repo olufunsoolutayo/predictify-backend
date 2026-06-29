@@ -6,8 +6,10 @@ import { AuthenticatedRequest } from "../../middleware/auth";
 
 export const recommendationsRouter = Router();
 
+type RequestWithId = AuthenticatedRequest & { id?: string };
+
 recommendationsRouter.get("/", requireAuth, async (req: AuthenticatedRequest, res, next) => {
-  const reqId = String((req as any).id ?? "anon");
+  const reqId = String((req as RequestWithId).id ?? "anon");
   try {
     const userId = req.user!.id;
     logger.info({ reqId, correlationId: reqId, userId }, "markets_recommendations_requested");
