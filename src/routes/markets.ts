@@ -87,6 +87,51 @@ marketsRouter.get("/:id", async (req, res, next) => {
   } catch (e) { return next(e); }
 });
 
+marketsRouter.get("/:id/share", async (req, res, next) => {
+  const reqId = String((req as any).id ?? "anon");
+  try {
+    const id = req.params.id as string;
+    const market = await getMarketById(id);
+    if (!market) {
+      logger.info({ reqId, correlationId: reqId, marketId: id }, "market_share_not_found");
+      return res.status(404).json({
+        error: { code: "not_found", message: "market not found", requestId: reqId },
+      });
+    }
+
+    const baseUrl = (process.env.PUBLIC_APP_URL ?? "https://app.predictify.xyz").replace(/\/+$/, "");
+    const marketUrl = `${baseUrl}/markets/${encodeURIComponent(id)}`;
+    const title = market.question;
+    const description = `Predict the outcome on Predictify — status: ${market.status}.`;
+    const imageUrl = `${baseUrl}/api/markets/${encodeURIComponent(id)}/og-image.png`;
+
+    logger.info({ reqId, correlationId: reqId, marketId: id }, "market_share_generated");
+
+    return res.json({
+      data: {
+        url: marketUrl,
+        og: {
+          "og:type": "website",
+          "og:url": marketUrl,
+          "og:title": title,
+          "og:description": description,
+          "og:image": imageUrl,
+          "og:site_name": "Predictify",
+        },
+        twitter: {
+          "twitter:card": "summary_large_image",
+          "twitter:title": title,
+          "twitter:description": description,
+          "twitter:image": imageUrl,
+        },
+      },
+    });
+  } catch (err) {
+    logger.error({ reqId, correlationId: reqId, err }, "market_share_failed");
+    return next(err);
+  }
+});
+
 marketsRouter.patch("/:id", requireAdmin, async (req: AuthenticatedRequest, res, next) => {
   try {
     const parsed = patchMarketSchema.safeParse(req.body);
