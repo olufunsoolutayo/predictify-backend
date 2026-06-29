@@ -24,6 +24,7 @@ describe("OpenAPI spec", () => {
     expect(paths).toContain("/api/markets/{id}");
     expect(paths).toContain("/api/markets/{id}/disputes");
     expect(paths).toContain("/api/users/{address}/predictions");
+    expect(paths).toContain("/api/users/{addr}/portfolio");
     expect(paths).toContain("/api/predictions");
     expect(paths).toContain("/api/leaderboard");
     expect(paths).toContain("/api/leaderboard/user/{stellarAddress}");
@@ -35,6 +36,7 @@ describe("OpenAPI spec", () => {
     expect(schemas["ErrorBody"]).toBeDefined();
     expect(schemas["Market"]).toBeDefined();
     expect(schemas["TokenPair"]).toBeDefined();
+    expect(schemas["UserPortfolio"]).toBeDefined();
   });
 
   it("defines bearer security scheme", () => {
