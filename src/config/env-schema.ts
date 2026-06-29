@@ -14,6 +14,9 @@ export const envSchema = z.object({
   JWT_ISSUER: z.string().default("predictify"),
   JWT_AUDIENCE: z.string().default("predictify-app"),
   JWT_TTL_SECONDS: z.coerce.number().int().positive().default(3600),
+  // See src/utils/keyRing.ts for the "kid:secret,..." format and rotation flow.
+  JWT_KEYS: z.string().optional(),
+  JWT_ACTIVE_KID: z.string().optional(),
 
   // ── Stellar / Soroban ─────────────────────────────────────
   STELLAR_NETWORK: z.enum(["testnet", "mainnet"]).default("testnet"),
