@@ -15,6 +15,13 @@
       "when": 1782594683208,
       "tag": "0001_chubby_dexter_bennett",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783000000000,
+      "tag": "0002_settlement_columns",
+      "breakpoints": true
     }
   ]
 }
