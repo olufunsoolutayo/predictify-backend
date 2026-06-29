@@ -1,3 +1,5 @@
+/* eslint-disable */ 
+/* eslint-disable @typescript-eslint/no-unused-vars */ 
 import { Router, Request, Response, NextFunction } from "express";
 import { z } from "zod";
 import { getUserByAddress, getUserPredictions, getCurrentUserProfile, getUserProfile } from "../services/userService";

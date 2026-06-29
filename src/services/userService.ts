@@ -107,7 +107,7 @@ export async function getUserPredictions(
 ) {
   const { status, limit, cursor } = opts;
 
-  let whereConditions = [eq(predictions.userId, userId)];
+  const whereConditions = [eq(predictions.userId, userId)];
 
   if (status) {
     whereConditions.push(eq(predictions.status, status));

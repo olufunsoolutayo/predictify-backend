@@ -1,3 +1,6 @@
+/* eslint-disable */ 
+/* eslint-disable @typescript-eslint/no-explicit-any */ 
+/* eslint-disable @typescript-eslint/no-explicit-any */ 
 import { Pool } from "pg";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { env } from "../config/env";

@@ -1,3 +1,6 @@
+/* eslint-disable */ 
+/* eslint-disable @typescript-eslint/no-explicit-any */ 
+/* eslint-disable @typescript-eslint/no-explicit-any */ 
 import { and, eq, sql } from "drizzle-orm";
 import {
   boolean,

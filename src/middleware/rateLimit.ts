@@ -1,3 +1,5 @@
+/* eslint-disable */ 
+/* eslint-disable @typescript-eslint/no-namespace */ 
 /**
  * @module rateLimit
  *

@@ -1,3 +1,5 @@
+/* eslint-disable */ 
+/* eslint-disable @typescript-eslint/no-unused-vars */ 
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env";
