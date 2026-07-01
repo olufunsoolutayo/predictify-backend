@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAdmin } from "../middleware/requireAdmin";
-import type { WebhookDispatcher } from "../services/webhookDispatcher";
+import type { IWebhookDispatcher } from "../services/webhookDispatcher";
 import type { DlqRow, WebhookStore } from "../services/webhookStore";
 
 /**
@@ -14,7 +14,7 @@ import type { DlqRow, WebhookStore } from "../services/webhookStore";
  */
 export interface AdminWebhookDeps {
   store: WebhookStore;
-  dispatcher: WebhookDispatcher;
+  dispatcher: IWebhookDispatcher;
 }
 
 /** Shape the DLQ row for the API: payload bytes are exposed as base64, never raw. */

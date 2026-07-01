@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, jest } from "@jest/globals";
 import request from "supertest";
 import express from "express";
-import { leaderboardRouter, LeaderboardPeriod } from "../../routes/leaderboard";
+import { leaderboardRouter } from "../../routes/leaderboard";
 import * as leaderboardService from "../../services/leaderboardService";
 
 // Mock the service

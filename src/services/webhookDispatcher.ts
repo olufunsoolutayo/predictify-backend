@@ -36,7 +36,7 @@ import type { DlqRow, NewDelivery, WebhookDelivery, WebhookStore } from "./webho
 // Public types
 // ---------------------------------------------------------------------------
 
-export interface WebhookDispatcher {
+export interface IWebhookDispatcher {
   replayFromDlq(row: unknown): Promise<unknown>;
 }
 

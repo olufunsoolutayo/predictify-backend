@@ -9,7 +9,6 @@ import { rateLimitAnon } from "../middleware/rateLimitAnon";
 import { listFeaturedMarkets } from "../services/marketFeatureService";
 import { z } from "zod";
 import { logger } from "../../config/logger";
-import { recommendationsRouter } from "./recommendations";
 
 export const marketsRouter = Router();
 

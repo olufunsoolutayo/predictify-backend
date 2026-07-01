@@ -12,15 +12,19 @@ export type LeaderboardEntry = AddressAggregate;
  */
 function getMaterializationViewName(period: LeaderboardPeriod): string {
   switch (period) {
-    case LeaderboardPeriod.ALL_TIME:
+    case LeaderboardPeriod.ALL_TIME: {
       return "leaderboard_mv";
-    case LeaderboardPeriod.MONTHLY:
+    }
+    case LeaderboardPeriod.MONTHLY: {
       return "leaderboard_monthly_mv";
-    case LeaderboardPeriod.WEEKLY:
+    }
+    case LeaderboardPeriod.WEEKLY: {
       return "leaderboard_weekly_mv";
-    default:
+    }
+    default: {
       const _exhaustive: never = period;
       throw new Error(`Unknown period: ${_exhaustive}`);
+    }
   }
 }
 

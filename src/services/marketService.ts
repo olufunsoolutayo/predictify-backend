@@ -1,7 +1,7 @@
 import { invalidateMarketCache } from "../cache/marketsCache";
 import { db, getDb } from "../db/client";
 import { markets, marketAuditLog } from "../db/schema";
-import { and, asc, eq, gt, inArray } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { emitMarketEvent, LogEvent } from "../logging/events";
 
 export interface Market {
@@ -33,6 +33,7 @@ export class VersionConflictError extends Error {
  * @returns Array of markets formatted with ISO timestamps
  * @throws Error if database query fails
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function listMarkets(options: { limit?: number; offset?: number } = {}): Promise<any[]> {
   const limit = options.limit ?? 50;
   const offset = options.offset ?? 0;
@@ -54,6 +55,7 @@ export async function listMarkets(options: { limit?: number; offset?: number } =
     throw new Error("Unexpected response from database: rows is not an array");
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return rows.map((r: any) => ({
     ...r,
     resolutionTime: r.resolutionTime instanceof Date ? r.resolutionTime.toISOString() : r.resolutionTime,
@@ -67,6 +69,7 @@ export async function listMarkets(options: { limit?: number; offset?: number } =
  * @returns Market object with formatted timestamp, or null if not found
  * @throws Error if database query fails
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getMarketById(id: string): Promise<any | null> {
   if (!id || typeof id !== "string") {
     throw new Error("Market ID must be a non-empty string");

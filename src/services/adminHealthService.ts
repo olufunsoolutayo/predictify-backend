@@ -12,7 +12,6 @@
  * real database or network connection.
  */
 
-import type { Pool } from "pg";
 import { env } from "../config/env";
 import { logger } from "../config/logger";
 
