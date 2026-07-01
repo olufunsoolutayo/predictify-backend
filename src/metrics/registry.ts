@@ -49,3 +49,9 @@ export const settleConfirmerFailedTotal = new Counter({
   help: "Total number of claims permanently marked as failed by the settle-confirmer",
   registers: [register],
 });
+
+export const indexerLagLedgers = new Gauge({
+  name: "indexer_lag_ledgers",
+  help: "Current indexer lag in number of ledgers",
+  registers: [register],
+});

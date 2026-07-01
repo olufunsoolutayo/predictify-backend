@@ -6,6 +6,7 @@ import { env } from "./config/env";
 import { logger } from "./config/logger";
 import { metricsMiddleware } from "./metrics/httpMetrics";
 import { idempotency } from "./middleware/idempotency";
+import { apiVersionMiddleware } from "./middleware/apiVersion";
 import { defaultBodyLimitMiddleware, webhookBodyLimitMiddleware } from "./middleware/bodyLimit";
 import { healthRouter } from "./routes/health";
 import dependenciesRouter from "./routes/healthz/dependencies";
@@ -20,7 +21,9 @@ import { notificationsRouter } from "./routes/notifications";
 import { socialRouter } from "./routes/social";
 import { adminAuditRouter } from "./routes/admin/audit";
 import { adminMarketsRouter } from "./routes/admin/markets";
+import { devicesRouter } from "./routes/devices";
 import { errorHandler } from "./middleware/errorHandler";
+import { startIndexerHealthProbe, stopIndexerHealthProbe } from "./jobs/indexerHealthProbe";
 import { requestContextStorage } from "./lib/requestContext";
 import { REQUEST_ID_HEADER } from "./lib/http";
 import { register } from "./metrics/registry";
@@ -55,6 +58,7 @@ export function createApp(_options?: unknown): express.Express {
 
   app.use(helmet());
   app.use("/api/admin/webhooks", webhookBodyLimitMiddleware);
+  app.use(apiVersionMiddleware);
   app.use(defaultBodyLimitMiddleware);
 
   app.use(
@@ -127,6 +131,7 @@ export function createApp(_options?: unknown): express.Express {
 if (require.main === module) {
   const app = createApp();
   let webhookWorker: WebhookWorker | null = null;
+  let probeHandle: NodeJS.Timeout | null = null;
 
   const stopWorkers = async (): Promise<void> => {
     logger.info("Stopping queue workers");
@@ -145,6 +150,7 @@ if (require.main === module) {
       marketResolverWorker.start();
       backupVerificationWorker.start();
       reconciliationWorker.start();
+      probeHandle = startIndexerHealthProbe();
 
       app.listen(env.PORT, () => {
         logger.info({ port: env.PORT, env: env.NODE_ENV }, "predictify-backend listening");
@@ -158,7 +164,7 @@ if (require.main === module) {
           process.exit(1);
         }, 5000).unref();
 
-        stopIndexerHealthProbe(probeHandle);
+        if (probeHandle) stopIndexerHealthProbe(probeHandle);
         stopScheduler();
         await closeDb();
         clearTimeout(forceExit);
@@ -167,7 +173,7 @@ if (require.main === module) {
 
       process.on("SIGINT", () => {
         logger.info("SIGINT received, shutting down gracefully");
-        stopIndexerHealthProbe(probeHandle);
+        if (probeHandle) stopIndexerHealthProbe(probeHandle);
         stopScheduler();
         process.exit(0);
       });
