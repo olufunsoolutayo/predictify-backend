@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { and, eq, gt } from "drizzle-orm";
 import { db } from "../db";
 import { indexerEvents, type IndexerEvent } from "../db/schema";

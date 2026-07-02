@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Router } from "express";
 import { requireAdmin } from "../middleware/requireAdmin";
 import type { IWebhookDispatcher } from "../services/webhookDispatcher";

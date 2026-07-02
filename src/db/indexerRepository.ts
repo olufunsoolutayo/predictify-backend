@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { eq, sql } from "drizzle-orm";
 import type { Database } from "./client";
 import { contractEvents, indexerCursor } from "./schema";

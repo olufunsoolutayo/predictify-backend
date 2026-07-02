@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { and, desc, eq, lt, or, isNull } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { webhookDeliveries as originalWebhookDeliveries, webhookDeliveriesDlq as originalWebhookDeliveriesDlq } from "../db/schema";

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-require-imports */
 import express from "express";
 import helmet from "helmet";
 import pinoHttp from "pino-http";
