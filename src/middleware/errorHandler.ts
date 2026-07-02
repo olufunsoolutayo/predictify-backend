@@ -74,6 +74,21 @@ export function errorHandler(
     return;
   }
 
+  // 3.5. Error with custom status property
+  if (err && typeof (err as any).status === "number") {
+    const status = (err as any).status;
+    const code = (err as any).code || "error";
+    res.status(status).json({
+      error: {
+        code,
+        message: (err as any).message || "An error occurred",
+        correlationId,
+        requestId: reqId,
+      },
+    });
+    return;
+  }
+
   // 4. Unknown error
   logger.error({ err, path: req.path, method: req.method, requestId: reqId }, "unknown_error");
   res.status(500).json({

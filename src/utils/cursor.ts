@@ -48,9 +48,9 @@ export function clampLimit(raw: unknown, fallback = DEFAULT_PAGE_SIZE): number {
 
 /** Encode a cursor key to an opaque, URL-safe string. */
 export function encodeCursor(key: CursorKey): string {
-  return Buffer.from(`${CURSOR_VERSION}|${key.sortValue}|${key.id}`, "utf8").toString(
-    "base64url",
-  );
+  const s = encodeURIComponent(key.sortValue);
+  const i = encodeURIComponent(key.id);
+  return Buffer.from(`${CURSOR_VERSION}|${s}|${i}`, "utf8").toString("base64url");
 }
 
 /**
@@ -72,8 +72,8 @@ export function decodeCursor(raw: unknown): CursorKey | null {
     const rest = decoded.slice(firstSep + 1);
     const sep = rest.indexOf("|");
     if (sep === -1) return null;
-    const sortValue = rest.slice(0, sep);
-    const id = rest.slice(sep + 1);
+    const sortValue = decodeURIComponent(rest.slice(0, sep));
+    const id = decodeURIComponent(rest.slice(sep + 1));
     if (!sortValue || !id) return null;
     return { sortValue, id };
   } catch {

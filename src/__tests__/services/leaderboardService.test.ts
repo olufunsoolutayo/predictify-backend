@@ -53,7 +53,7 @@ describe("LeaderboardService", () => {
   describe("getLeaderboard", () => {
     it("should return leaderboard entries from cache if available", async () => {
       const cachedData = JSON.stringify([mockLeaderboardEntry]);
-      (redis.get as jest.Mock).mockResolvedValueOnce(cachedData);
+      (redis.get as any).mockResolvedValueOnce(cachedData);
 
       const result = await getLeaderboard(50, 0, LeaderboardPeriod.ALL_TIME);
 
@@ -63,8 +63,8 @@ describe("LeaderboardService", () => {
     });
 
     it("should query database if cache miss and cache result", async () => {
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
-      (db.execute as jest.Mock).mockResolvedValueOnce({
+      (redis.get as any).mockResolvedValueOnce(null);
+      (db.execute as any).mockResolvedValueOnce({
         rows: [mockLeaderboardEntry],
       });
 
@@ -79,32 +79,32 @@ describe("LeaderboardService", () => {
     });
 
     it("should use correct view name for monthly period", async () => {
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
-      (db.execute as jest.Mock).mockResolvedValueOnce({
+      (redis.get as any).mockResolvedValueOnce(null);
+      (db.execute as any).mockResolvedValueOnce({
         rows: [mockLeaderboardEntry],
       });
 
       await getLeaderboard(50, 0, LeaderboardPeriod.MONTHLY);
 
-      const sqlCall = (db.execute as jest.Mock).mock.calls[0][0];
+      const sqlCall = (db.execute as any).mock.calls[0][0];
       expect(sqlCall.toString()).toContain("leaderboard_monthly_mv");
     });
 
     it("should use correct view name for weekly period", async () => {
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
-      (db.execute as jest.Mock).mockResolvedValueOnce({
+      (redis.get as any).mockResolvedValueOnce(null);
+      (db.execute as any).mockResolvedValueOnce({
         rows: [mockLeaderboardEntry],
       });
 
       await getLeaderboard(50, 0, LeaderboardPeriod.WEEKLY);
 
-      const sqlCall = (db.execute as jest.Mock).mock.calls[0][0];
+      const sqlCall = (db.execute as any).mock.calls[0][0];
       expect(sqlCall.toString()).toContain("leaderboard_weekly_mv");
     });
 
     it("should respect limit and offset parameters", async () => {
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
-      (db.execute as jest.Mock).mockResolvedValueOnce({
+      (redis.get as any).mockResolvedValueOnce(null);
+      (db.execute as any).mockResolvedValueOnce({
         rows: [mockLeaderboardEntry],
       });
 
@@ -114,8 +114,8 @@ describe("LeaderboardService", () => {
     });
 
     it("should handle cache read errors gracefully", async () => {
-      (redis.get as jest.Mock).mockRejectedValueOnce(new Error("Cache error"));
-      (db.execute as jest.Mock).mockResolvedValueOnce({
+      (redis.get as any).mockRejectedValueOnce(new Error("Cache error"));
+      (db.execute as any).mockResolvedValueOnce({
         rows: [mockLeaderboardEntry],
       });
 
@@ -126,8 +126,8 @@ describe("LeaderboardService", () => {
     });
 
     it("should handle database errors", async () => {
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
-      (db.execute as jest.Mock).mockRejectedValueOnce(new Error("DB error"));
+      (redis.get as any).mockResolvedValueOnce(null);
+      (db.execute as any).mockRejectedValueOnce(new Error("DB error"));
 
       await expect(
         getLeaderboard(50, 0, LeaderboardPeriod.ALL_TIME)
@@ -138,7 +138,7 @@ describe("LeaderboardService", () => {
   describe("getUserLeaderboardEntry", () => {
     it("should return user entry from cache if available", async () => {
       const cachedData = JSON.stringify(mockLeaderboardEntry);
-      (redis.get as jest.Mock).mockResolvedValueOnce(cachedData);
+      (redis.get as any).mockResolvedValueOnce(cachedData);
 
       const result = await getUserLeaderboardEntry(
         mockLeaderboardEntry.stellar_address,
@@ -153,8 +153,8 @@ describe("LeaderboardService", () => {
     });
 
     it("should query database if cache miss and cache result", async () => {
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
-      (db.execute as jest.Mock).mockResolvedValueOnce({
+      (redis.get as any).mockResolvedValueOnce(null);
+      (db.execute as any).mockResolvedValueOnce({
         rows: [mockLeaderboardEntry],
       });
 
@@ -172,8 +172,8 @@ describe("LeaderboardService", () => {
     });
 
     it("should return null if user not found", async () => {
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
-      (db.execute as jest.Mock).mockResolvedValueOnce({
+      (redis.get as any).mockResolvedValueOnce(null);
+      (db.execute as any).mockResolvedValueOnce({
         rows: [],
       });
 
@@ -191,8 +191,8 @@ describe("LeaderboardService", () => {
     });
 
     it("should cache null entries", async () => {
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
-      (db.execute as jest.Mock).mockResolvedValueOnce({
+      (redis.get as any).mockResolvedValueOnce(null);
+      (db.execute as any).mockResolvedValueOnce({
         rows: [],
       });
 
@@ -206,8 +206,8 @@ describe("LeaderboardService", () => {
     });
 
     it("should use correct view name for different periods", async () => {
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
-      (db.execute as jest.Mock).mockResolvedValueOnce({
+      (redis.get as any).mockResolvedValueOnce(null);
+      (db.execute as any).mockResolvedValueOnce({
         rows: [mockLeaderboardEntry],
       });
 
@@ -216,51 +216,51 @@ describe("LeaderboardService", () => {
         LeaderboardPeriod.MONTHLY
       );
 
-      const sqlCall = (db.execute as jest.Mock).mock.calls[0][0];
+      const sqlCall = (db.execute as any).mock.calls[0][0];
       expect(sqlCall.toString()).toContain("leaderboard_monthly_mv");
     });
   });
 
   describe("refreshLeaderboard", () => {
     it("should refresh materialized view for specified period", async () => {
-      (redis.keys as jest.Mock).mockResolvedValueOnce([]);
-      (db.execute as jest.Mock).mockResolvedValueOnce(undefined);
+      (redis.keys as any).mockResolvedValueOnce([]);
+      (db.execute as any).mockResolvedValueOnce(undefined);
 
       await refreshLeaderboard(LeaderboardPeriod.ALL_TIME);
 
       expect(db.execute).toHaveBeenCalled();
-      const sqlCall = (db.execute as jest.Mock).mock.calls[0][0];
+      const sqlCall = (db.execute as any).mock.calls[0][0];
       expect(sqlCall.toString()).toContain("REFRESH MATERIALIZED VIEW CONCURRENTLY");
       expect(sqlCall.toString()).toContain("leaderboard_mv");
     });
 
     it("should refresh monthly view", async () => {
-      (redis.keys as jest.Mock).mockResolvedValueOnce([]);
-      (db.execute as jest.Mock).mockResolvedValueOnce(undefined);
+      (redis.keys as any).mockResolvedValueOnce([]);
+      (db.execute as any).mockResolvedValueOnce(undefined);
 
       await refreshLeaderboard(LeaderboardPeriod.MONTHLY);
 
-      const sqlCall = (db.execute as jest.Mock).mock.calls[0][0];
+      const sqlCall = (db.execute as any).mock.calls[0][0];
       expect(sqlCall.toString()).toContain("leaderboard_monthly_mv");
     });
 
     it("should refresh weekly view", async () => {
-      (redis.keys as jest.Mock).mockResolvedValueOnce([]);
-      (db.execute as jest.Mock).mockResolvedValueOnce(undefined);
+      (redis.keys as any).mockResolvedValueOnce([]);
+      (db.execute as any).mockResolvedValueOnce(undefined);
 
       await refreshLeaderboard(LeaderboardPeriod.WEEKLY);
 
-      const sqlCall = (db.execute as jest.Mock).mock.calls[0][0];
+      const sqlCall = (db.execute as any).mock.calls[0][0];
       expect(sqlCall.toString()).toContain("leaderboard_weekly_mv");
     });
 
     it("should invalidate cache for the period after refresh", async () => {
-      (redis.keys as jest.Mock).mockResolvedValueOnce([
+      (redis.keys as any).mockResolvedValueOnce([
         "leaderboard:all-time:50:0",
         "leaderboard:all-time:50:50",
       ]);
-      (redis.del as jest.Mock).mockResolvedValueOnce(2);
-      (db.execute as jest.Mock).mockResolvedValueOnce(undefined);
+      (redis.del as any).mockResolvedValueOnce(2);
+      (db.execute as any).mockResolvedValueOnce(undefined);
 
       await refreshLeaderboard(LeaderboardPeriod.ALL_TIME);
 
@@ -272,7 +272,7 @@ describe("LeaderboardService", () => {
     });
 
     it("should handle refresh errors", async () => {
-      (db.execute as jest.Mock).mockRejectedValueOnce(new Error("Refresh failed"));
+      (db.execute as any).mockRejectedValueOnce(new Error("Refresh failed"));
 
       await expect(refreshLeaderboard(LeaderboardPeriod.ALL_TIME)).rejects.toThrow(
         "Refresh failed"
@@ -282,11 +282,11 @@ describe("LeaderboardService", () => {
 
   describe("getLeaderboardWithRefresh", () => {
     it("should refresh before returning results", async () => {
-      (redis.keys as jest.Mock).mockResolvedValueOnce([]);
-      (db.execute as jest.Mock)
+      (redis.keys as any).mockResolvedValueOnce([]);
+      (db.execute as any)
         .mockResolvedValueOnce(undefined) // refresh call
         .mockResolvedValueOnce({ rows: [mockLeaderboardEntry] }); // getLeaderboard call
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
+      (redis.get as any).mockResolvedValueOnce(null);
 
       const result = await getLeaderboardWithRefresh(50, 0, LeaderboardPeriod.ALL_TIME);
 
@@ -295,29 +295,29 @@ describe("LeaderboardService", () => {
     });
 
     it("should work with monthly period", async () => {
-      (redis.keys as jest.Mock).mockResolvedValueOnce([]);
-      (db.execute as jest.Mock)
+      (redis.keys as any).mockResolvedValueOnce([]);
+      (db.execute as any)
         .mockResolvedValueOnce(undefined)
         .mockResolvedValueOnce({ rows: [mockLeaderboardEntry] });
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
+      (redis.get as any).mockResolvedValueOnce(null);
 
       await getLeaderboardWithRefresh(50, 0, LeaderboardPeriod.MONTHLY);
 
-      const calls = (db.execute as jest.Mock).mock.calls;
+      const calls = (db.execute as any).mock.calls;
       expect(calls[0][0].toString()).toContain("leaderboard_monthly_mv");
       expect(calls[1][0].toString()).toContain("leaderboard_monthly_mv");
     });
 
     it("should work with weekly period", async () => {
-      (redis.keys as jest.Mock).mockResolvedValueOnce([]);
-      (db.execute as jest.Mock)
+      (redis.keys as any).mockResolvedValueOnce([]);
+      (db.execute as any)
         .mockResolvedValueOnce(undefined)
         .mockResolvedValueOnce({ rows: [mockLeaderboardEntry] });
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
+      (redis.get as any).mockResolvedValueOnce(null);
 
       await getLeaderboardWithRefresh(50, 0, LeaderboardPeriod.WEEKLY);
 
-      const calls = (db.execute as jest.Mock).mock.calls;
+      const calls = (db.execute as any).mock.calls;
       expect(calls[0][0].toString()).toContain("leaderboard_weekly_mv");
       expect(calls[1][0].toString()).toContain("leaderboard_weekly_mv");
     });
@@ -325,8 +325,8 @@ describe("LeaderboardService", () => {
 
   describe("Period validation", () => {
     it("should default to ALL_TIME period", async () => {
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
-      (db.execute as jest.Mock).mockResolvedValueOnce({
+      (redis.get as any).mockResolvedValueOnce(null);
+      (db.execute as any).mockResolvedValueOnce({
         rows: [mockLeaderboardEntry],
       });
 
@@ -348,8 +348,8 @@ describe("LeaderboardService", () => {
 
   describe("Edge cases", () => {
     it("should handle empty result set", async () => {
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
-      (db.execute as jest.Mock).mockResolvedValueOnce({
+      (redis.get as any).mockResolvedValueOnce(null);
+      (db.execute as any).mockResolvedValueOnce({
         rows: [],
       });
 
@@ -361,8 +361,8 @@ describe("LeaderboardService", () => {
     });
 
     it("should handle very large limit", async () => {
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
-      (db.execute as jest.Mock).mockResolvedValueOnce({
+      (redis.get as any).mockResolvedValueOnce(null);
+      (db.execute as any).mockResolvedValueOnce({
         rows: [mockLeaderboardEntry],
       });
 
@@ -372,8 +372,8 @@ describe("LeaderboardService", () => {
     });
 
     it("should handle zero offset", async () => {
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
-      (db.execute as jest.Mock).mockResolvedValueOnce({
+      (redis.get as any).mockResolvedValueOnce(null);
+      (db.execute as any).mockResolvedValueOnce({
         rows: [mockLeaderboardEntry],
       });
 
@@ -383,11 +383,11 @@ describe("LeaderboardService", () => {
     });
 
     it("should handle cache write failure gracefully", async () => {
-      (redis.get as jest.Mock).mockResolvedValueOnce(null);
-      (db.execute as jest.Mock).mockResolvedValueOnce({
+      (redis.get as any).mockResolvedValueOnce(null);
+      (db.execute as any).mockResolvedValueOnce({
         rows: [mockLeaderboardEntry],
       });
-      (redis.setex as jest.Mock).mockRejectedValueOnce(
+      (redis.setex as any).mockRejectedValueOnce(
         new Error("Cache write failed")
       );
 
@@ -398,3 +398,4 @@ describe("LeaderboardService", () => {
     });
   });
 });
+

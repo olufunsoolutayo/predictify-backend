@@ -117,6 +117,7 @@ export const markets = pgTable("markets", {
   featured: boolean("featured").notNull().default(false),
   featuredAt: timestamp("featured_at", { withTimezone: true }),
   featuredBy: text("featured_by"),
+  forceFinalized: boolean("force_finalized").notNull().default(false),
 });
 
 export const marketAuditLog = pgTable("market_audit_log", {
@@ -277,6 +278,8 @@ export const indexerEvents = pgTable("indexer_events", {
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
+  marketId: text("market_id"),
+  data: jsonb("data"),
 });
 
 export type IndexerEvent = typeof indexerEvents.$inferSelect;

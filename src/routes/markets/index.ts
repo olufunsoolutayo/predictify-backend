@@ -2,17 +2,19 @@
   
 /* eslint-disable @typescript-eslint/no-explicit-any */ 
 import { Router } from "express";
-import { listMarkets, listUpcomingMarkets, getMarketById, updateMarket, VersionConflictError } from "../services/marketService";
-import { searchMarkets } from "../repositories/marketRepository";
-import { requireAdmin, AuthenticatedRequest } from "../middleware/auth";
-import { rateLimitAnon } from "../middleware/rateLimitAnon";
-import { listFeaturedMarkets } from "../services/marketFeatureService";
+import { listMarkets, listUpcomingMarkets, getMarketById, updateMarket, VersionConflictError } from "../../services/marketService";
+import { searchMarkets } from "../../repositories/marketRepository";
+import { requireAdmin, AuthenticatedRequest } from "../../middleware/auth";
+import { rateLimitAnon } from "../../middleware/rateLimitAnon";
+import { listFeaturedMarkets } from "../../services/marketFeatureService";
 import { z } from "zod";
 import { logger } from "../../config/logger";
+import { disputesRouter } from "../disputes";
+import { trendingRouter } from "./trending";
+import { marketAuditRouter } from "../marketAudit";
 
 export const marketsRouter = Router();
 
-import { disputesRouter } from "./disputes";
 marketsRouter.use("/:id/disputes", disputesRouter);
 
 marketsRouter.use(rateLimitAnon);

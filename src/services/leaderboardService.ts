@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { redis } from "../config/redis";
 import { LeaderboardPeriod } from "../routes/leaderboard";
 import { logger } from "../config/logger";
+import { AddressAggregate } from "./addressAggregatesService";
 
 export type LeaderboardEntry = AddressAggregate;
 

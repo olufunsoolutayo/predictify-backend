@@ -1001,6 +1001,7 @@ const AdminHealthDetail = z
 registry.registerPath({
   method: "get",
   path: "/api/admin/health/detail",
+  operationId: "getAdminHealthDetail",
   tags: ["Admin"],
   summary: "Detailed runtime health (admin only)",
   description:

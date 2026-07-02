@@ -1,13 +1,15 @@
 import { z } from "zod";
 
-export const envSchema = z.object({
+const baseSchema = z.object({
   // ── Application ───────────────────────────────────────────
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3001),
   LOG_LEVEL: z.enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"]).default("info"),
+  FLAGS_CACHE_TTL_SECONDS: z.coerce.number().int().positive().default(30),
 
-  // ── Database ──────────────────────────────────────────────
+  // ── Database & Cache ──────────────────────────────────────
   DATABASE_URL: z.string().url(),
+  REDIS_URL: z.string().url().default("redis://localhost:6379"),
 
   // ── JWT ───────────────────────────────────────────────────
   JWT_SECRET: z.string().min(32),
@@ -17,6 +19,7 @@ export const envSchema = z.object({
   // See src/utils/keyRing.ts for the "kid:secret,..." format and rotation flow.
   JWT_KEYS: z.string().optional(),
   JWT_ACTIVE_KID: z.string().optional(),
+  WORKER_HEARTBEAT_SECONDS: z.coerce.number().int().positive().default(30),
 
   // ── Stellar / Soroban ─────────────────────────────────────
   STELLAR_NETWORK: z.enum(["testnet", "mainnet"]).default("testnet"),
@@ -27,7 +30,28 @@ export const envSchema = z.object({
   // ── Indexer tunables ──────────────────────────────────────
   INDEXER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
   INDEXER_START_LEDGER: z.coerce.number().int().nonnegative().default(0),
-  INDEXER_REWIND_LEDGERS: z.coerce.number().int().positive().default(100),
+  INDEXER_REWIND_LEDGERS: z.coerce.number().int().nonnegative().default(100),
+  INDEXER_BACKFILL_CHUNK_SIZE: z.coerce.number().int().positive().default(500),
+  INDEXER_GAP_SCAN_INTERVAL_MS: z.coerce.number().int().positive().default(60000),
+  INDEXER_LAG_ALERT_THRESHOLD: z.coerce.number().int().positive().default(200),
+
+  // ── Reconciliation ────────────────────────────────────────
+  RECONCILIATION_ENABLED: z.coerce.boolean().default(false),
+  RECONCILIATION_SCHEDULE: z.string().default("0 2 * * *"),
+
+  // ── Administration ────────────────────────────────────────
+  ADMIN_ALLOWLIST: z.string().default("").transform((val) => val.split(",").map((s) => s.trim()).filter(Boolean)),
+  PG_POOL_MAX: z.coerce.number().int().positive().default(10),
+  PG_STATEMENT_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+
+  // ── Geo-blocking ──────────────────────────────────────────
+  GEO_BLOCKED_COUNTRIES: z.string().default("").transform((val) =>
+    val.split(",").map((s) => s.trim().toUpperCase()).filter(Boolean),
+  ),
+  MMDB_PATH: z.string().default(""),
+  GEO_ALLOWLIST: z.string().default("").transform((val) =>
+    val.split(",").map((s) => s.trim()).filter(Boolean),
+  ),
 
   // ── Anonymous rate limiting ───────────────────────────────
   ANON_RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
@@ -40,15 +64,29 @@ export const envSchema = z.object({
   /** Sliding window length for captcha threshold tracking (ms) */
   CAPTCHA_WINDOW_MS: z.coerce.number().int().positive().default(60_000),
 
-  // ── Metrics ──────────────────────────────────────────────
+  // ── Settle confirmer ──────────────────────────────────────
+  SETTLE_CONFIRMER_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5_000),
+  SETTLE_CONFIRMER_CONFIRMATION_LEDGERS: z.coerce.number().int().positive().default(2),
+
+  // ── Metrics ───────────────────────────────────────────────
   /** Bearer token required to access /api/metrics. Empty string (default) means no auth. */
   METRICS_AUTH_TOKEN: z.string().default(""),
 });
 
-export type Env = z.infer<typeof envSchema>;
+export const envSchema = baseSchema.refine(
+  (data) => data.JWT_TTL_SECONDS >= data.WORKER_HEARTBEAT_SECONDS * 2,
+  (data) => ({
+    message: `JWT_TTL_SECONDS (${data.JWT_TTL_SECONDS}) must be at least WORKER_HEARTBEAT_SECONDS * 2 (${data.WORKER_HEARTBEAT_SECONDS * 2})`,
+    path: ["JWT_TTL_SECONDS"],
+  })
+);
 
+export type Env = z.infer<typeof baseSchema>;
+
+// Returns a bullet-list string of all validation failures, suitable for console output.
 export function formatEnvErrors(error: z.ZodError): string {
   return error.issues
     .map((issue) => `  • ${issue.path.join(".") || "(root)"}: ${issue.message}`)
     .join("\n");
 }
+

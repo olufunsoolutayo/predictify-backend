@@ -55,3 +55,15 @@ export const indexerLagLedgers = new Gauge({
   help: "Current indexer lag in number of ledgers",
   registers: [register],
 });
+
+export const indexerGapDetectedTotal = new Counter({
+  name: "indexer_gap_detected_total",
+  help: "Total number of indexer gaps detected",
+  labelNames: ["from", "to"] as const,
+  registers: [register],
+});
+
+export function resetMetrics(): void {
+  register.clear();
+}
+

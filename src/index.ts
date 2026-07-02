@@ -21,6 +21,7 @@ import { notificationsRouter } from "./routes/notifications";
 import { socialRouter } from "./routes/social";
 import { adminAuditRouter } from "./routes/admin/audit";
 import { adminMarketsRouter } from "./routes/admin/markets";
+import { adminUsersRouter } from "./routes/adminUsers";
 import { devicesRouter } from "./routes/devices";
 import { errorHandler } from "./middleware/errorHandler";
 import { startIndexerHealthProbe, stopIndexerHealthProbe } from "./jobs/indexerHealthProbe";
@@ -45,7 +46,11 @@ function sanitizeRequestId(raw: string): string | undefined {
   return sanitized.length > 0 ? sanitized : undefined;
 }
 
-export function createApp(_options?: unknown): express.Express {
+export interface AppDeps {
+  webhooks?: any;
+}
+
+export function createApp(deps: AppDeps = {}): express.Express {
   const app = express();
 
   if (env.TRUST_PROXY) {
@@ -109,6 +114,12 @@ export function createApp(_options?: unknown): express.Express {
   app.use("/api/me/devices", devicesRouter);
   app.use("/api/admin/audit", adminAuditRouter);
   app.use("/api/admin/markets", adminMarketsRouter);
+  app.use("/api/admin/users", adminUsersRouter);
+
+  if (deps.webhooks) {
+    const { createAdminWebhooksRouter } = require("./routes/adminWebhooks");
+    app.use("/api/admin/webhooks", createAdminWebhooksRouter(deps.webhooks));
+  }
 
   app.get("/metrics", async (req, res) => {
     const metricsAuthToken = process.env.METRICS_AUTH_TOKEN;

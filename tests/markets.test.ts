@@ -16,10 +16,10 @@ type MarketRow = {
  */
 function createMarketDb(rows: MarketRow[]): Database {
   return {
-    select: jest.fn((columns?: any) => ({
-      from: jest.fn((table: any) => ({
-        where: jest.fn((condition: any) => ({
-          orderBy: jest.fn((orderByFn: any, ...rest: any) => ({
+    select: jest.fn((_columns?: any) => ({
+      from: jest.fn((_table: any) => ({
+        where: jest.fn((_condition: any) => ({
+          orderBy: jest.fn((_orderByFn: any, ..._rest: any) => ({
             limit: jest.fn((limitVal: number) => ({
               offset: jest.fn(async (offsetVal: number) => {
                 return rows.slice(offsetVal, offsetVal + limitVal);
@@ -35,21 +35,21 @@ function createMarketDb(rows: MarketRow[]): Database {
     transaction: jest.fn(async (fn: Function) => {
       // Mock transaction support for tests
       return fn({
-        select: jest.fn((columns?: any) => ({
-          from: jest.fn((table: any) => ({
-            where: jest.fn((condition: any) => ({
+        select: jest.fn((_columns?: any) => ({
+          from: jest.fn((_table: any) => ({
+            where: jest.fn((_condition: any) => ({
               limit: jest.fn(async (limitVal: number) => rows.slice(0, limitVal)),
             })),
           })),
         })),
-        update: jest.fn((table: any) => ({
+        update: jest.fn((_table: any) => ({
           set: jest.fn((values: any) => ({
-            where: jest.fn((condition: any) => ({
+            where: jest.fn((_condition: any) => ({
               returning: jest.fn(async () => [{ ...rows[0], ...values }]),
             })),
           })),
         })),
-        insert: jest.fn((table: any) => ({
+        insert: jest.fn((_table: any) => ({
           values: jest.fn(async () => undefined),
         })),
       });

@@ -40,7 +40,7 @@ marketAuditRouter.get("/", async (req, res, next) => {
       });
     }
 
-    const marketId = req.params.id as string;
+    const marketId = (req.params as any).id as string;
     const exists = await db
       .select({ id: markets.id })
       .from(markets)

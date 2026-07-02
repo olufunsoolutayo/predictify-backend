@@ -77,7 +77,7 @@ export function createAdminWebhooksRouter(deps: AdminWebhookDeps): Router {
         });
       }
 
-      const fresh = await deps.dispatcher.replayFromDlq(row);
+      const fresh: any = await deps.dispatcher.replayFromDlq(row);
       if (!fresh) {
         // Lost the idempotency race between the check above and the write.
         return res.status(409).json({ error: { code: "already_replayed" } });

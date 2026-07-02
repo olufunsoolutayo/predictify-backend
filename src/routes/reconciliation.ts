@@ -42,8 +42,8 @@ reconciliationRouter.get("/:reportId", async (req, res, next) => {
     if (!report) {
       return res.status(404).json({ error: { code: "not_found" } });
     }
-    res.json({ data: report });
+    return res.json({ data: report });
   } catch (e) {
-    next(e);
+    return next(e);
   }
 });

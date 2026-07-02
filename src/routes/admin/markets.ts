@@ -16,12 +16,17 @@ import { Router, type Request, type Response } from "express";
 import { rateLimit } from "express-rate-limit";
 import { z } from "zod";
 import { requireAdmin } from "../../middleware/requireAdmin";
+import { logger } from "../../config/logger";
 import {
   featureMarket,
   unfeatureMarket,
   MarketArchivedError,
   MarketNotFoundError,
 } from "../../services/marketFeatureService";
+import {
+  disableMarket,
+  MarketAlreadyDisabledError,
+} from "../../services/marketService";
 
 /** Pulls the first valid IP from X-Forwarded-For or falls back to socket/ip. */
 function extractClientIp(req: Request): string {
@@ -136,6 +141,40 @@ export function createAdminMarketsRouter(
       await handle(req, res, "unfeature");
     } catch (err) {
       next(err);
+    }
+  });
+
+  const disableBodySchema = z
+    .object({
+      marketId: z.string().min(1, "marketId is required"),
+      reason: z.string().min(1, "reason is required").max(500),
+    })
+    .strict();
+
+  router.post("/disable", async (req: any, res, next) => {
+    try {
+      const parsed = disableBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          error: { code: "validation_error", details: parsed.error.issues },
+        });
+      }
+
+      const { marketId, reason } = parsed.data;
+      const adminAddress = req.user!.stellarAddress;
+
+      const updated = await disableMarket(marketId, reason, adminAddress);
+
+      logger.info({ marketId, adminAddress }, "admin_market_disabled");
+      return res.status(200).json({ data: updated });
+    } catch (e) {
+      if (e instanceof MarketAlreadyDisabledError) {
+        return res.status(409).json({ error: { code: "already_disabled" } });
+      }
+      if ((e as { status?: number }).status === 404) {
+        return res.status(404).json({ error: { code: "not_found" } });
+      }
+      return next(e);
     }
   });
 

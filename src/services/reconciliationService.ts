@@ -365,10 +365,10 @@ export async function performReconciliation(): Promise<{
   };
 }
 
-export async function getReconciliationReport(): Promise<null> {
+export async function getReconciliationReport(_reportId?: string): Promise<null> {
   return null;
 }
 
-export async function listReconciliationReports(): Promise<[]> {
+export async function listReconciliationReports(_limit?: number, _offset?: number): Promise<[]> {
   return [];
 }

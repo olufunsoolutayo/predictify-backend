@@ -28,7 +28,7 @@ describe("Leaderboard Routes", () => {
 
   describe("GET /api/leaderboard", () => {
     it("should return leaderboard with default parameters", async () => {
-      (leaderboardService.getLeaderboard as jest.Mock).mockResolvedValueOnce([
+      (leaderboardService.getLeaderboard as any).mockResolvedValueOnce([
         mockLeaderboardEntry,
       ]);
 
@@ -46,7 +46,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should accept period parameter", async () => {
-      (leaderboardService.getLeaderboard as jest.Mock).mockResolvedValueOnce([
+      (leaderboardService.getLeaderboard as any).mockResolvedValueOnce([
         mockLeaderboardEntry,
       ]);
 
@@ -64,7 +64,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should accept weekly period", async () => {
-      (leaderboardService.getLeaderboard as jest.Mock).mockResolvedValueOnce([
+      (leaderboardService.getLeaderboard as any).mockResolvedValueOnce([
         mockLeaderboardEntry,
       ]);
 
@@ -90,7 +90,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should accept limit parameter", async () => {
-      (leaderboardService.getLeaderboard as jest.Mock).mockResolvedValueOnce([
+      (leaderboardService.getLeaderboard as any).mockResolvedValueOnce([
         mockLeaderboardEntry,
       ]);
 
@@ -108,7 +108,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should accept offset parameter", async () => {
-      (leaderboardService.getLeaderboard as jest.Mock).mockResolvedValueOnce([
+      (leaderboardService.getLeaderboard as any).mockResolvedValueOnce([
         mockLeaderboardEntry,
       ]);
 
@@ -150,7 +150,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should support refresh parameter with all-time period", async () => {
-      (leaderboardService.getLeaderboardWithRefresh as jest.Mock).mockResolvedValueOnce([
+      (leaderboardService.getLeaderboardWithRefresh as any).mockResolvedValueOnce([
         mockLeaderboardEntry,
       ]);
 
@@ -168,7 +168,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should support refresh parameter with monthly period", async () => {
-      (leaderboardService.getLeaderboardWithRefresh as jest.Mock).mockResolvedValueOnce([
+      (leaderboardService.getLeaderboardWithRefresh as any).mockResolvedValueOnce([
         mockLeaderboardEntry,
       ]);
 
@@ -185,7 +185,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should support refresh parameter with weekly period", async () => {
-      (leaderboardService.getLeaderboardWithRefresh as jest.Mock).mockResolvedValueOnce([
+      (leaderboardService.getLeaderboardWithRefresh as any).mockResolvedValueOnce([
         mockLeaderboardEntry,
       ]);
 
@@ -202,7 +202,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should return empty array when no results", async () => {
-      (leaderboardService.getLeaderboard as jest.Mock).mockResolvedValueOnce([]);
+      (leaderboardService.getLeaderboard as any).mockResolvedValueOnce([]);
 
       const response = await request(app).get("/api/leaderboard");
 
@@ -212,7 +212,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should handle service errors", async () => {
-      (leaderboardService.getLeaderboard as jest.Mock).mockRejectedValueOnce(
+      (leaderboardService.getLeaderboard as any).mockRejectedValueOnce(
         new Error("Database error")
       );
 
@@ -222,7 +222,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should coerce string parameters to correct types", async () => {
-      (leaderboardService.getLeaderboard as jest.Mock).mockResolvedValueOnce([
+      (leaderboardService.getLeaderboard as any).mockResolvedValueOnce([
         mockLeaderboardEntry,
       ]);
 
@@ -244,7 +244,7 @@ describe("Leaderboard Routes", () => {
 
   describe("GET /api/leaderboard/user/:stellarAddress", () => {
     it("should return user leaderboard entry with default period", async () => {
-      (leaderboardService.getUserLeaderboardEntry as jest.Mock).mockResolvedValueOnce(
+      (leaderboardService.getUserLeaderboardEntry as any).mockResolvedValueOnce(
         mockLeaderboardEntry
       );
 
@@ -260,7 +260,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should accept period parameter for user endpoint", async () => {
-      (leaderboardService.getUserLeaderboardEntry as jest.Mock).mockResolvedValueOnce(
+      (leaderboardService.getUserLeaderboardEntry as any).mockResolvedValueOnce(
         mockLeaderboardEntry
       );
 
@@ -276,7 +276,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should accept weekly period for user endpoint", async () => {
-      (leaderboardService.getUserLeaderboardEntry as jest.Mock).mockResolvedValueOnce(
+      (leaderboardService.getUserLeaderboardEntry as any).mockResolvedValueOnce(
         mockLeaderboardEntry
       );
 
@@ -300,7 +300,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should return 404 when user not found", async () => {
-      (leaderboardService.getUserLeaderboardEntry as jest.Mock).mockResolvedValueOnce(
+      (leaderboardService.getUserLeaderboardEntry as any).mockResolvedValueOnce(
         null
       );
 
@@ -312,7 +312,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should handle service errors for user endpoint", async () => {
-      (leaderboardService.getUserLeaderboardEntry as jest.Mock).mockRejectedValueOnce(
+      (leaderboardService.getUserLeaderboardEntry as any).mockRejectedValueOnce(
         new Error("Database error")
       );
 
@@ -324,7 +324,7 @@ describe("Leaderboard Routes", () => {
 
     it("should work with different stellar addresses", async () => {
       const altAddress = "GBTCHKHMWCS5TOX2LAD4DAEKTC3UFSFXQ2MRLED5EYOA34RH4ZX72JK";
-      (leaderboardService.getUserLeaderboardEntry as jest.Mock).mockResolvedValueOnce(
+      (leaderboardService.getUserLeaderboardEntry as any).mockResolvedValueOnce(
         { ...mockLeaderboardEntry, stellar_address: altAddress }
       );
 
@@ -341,7 +341,7 @@ describe("Leaderboard Routes", () => {
 
   describe("Response format validation", () => {
     it("should include all required meta fields", async () => {
-      (leaderboardService.getLeaderboard as jest.Mock).mockResolvedValueOnce([
+      (leaderboardService.getLeaderboard as any).mockResolvedValueOnce([
         mockLeaderboardEntry,
       ]);
 
@@ -355,7 +355,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should return data as array in meta response", async () => {
-      (leaderboardService.getLeaderboard as jest.Mock).mockResolvedValueOnce([
+      (leaderboardService.getLeaderboard as any).mockResolvedValueOnce([
         mockLeaderboardEntry,
         mockLeaderboardEntry,
       ]);
@@ -367,7 +367,7 @@ describe("Leaderboard Routes", () => {
     });
 
     it("should return data as object in user response", async () => {
-      (leaderboardService.getUserLeaderboardEntry as jest.Mock).mockResolvedValueOnce(
+      (leaderboardService.getUserLeaderboardEntry as any).mockResolvedValueOnce(
         mockLeaderboardEntry
       );
 
@@ -379,3 +379,4 @@ describe("Leaderboard Routes", () => {
     });
   });
 });
+
